@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Panel — Time Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f3f4f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-weight: 500;
+      color: #222;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .tab-btn {
+      background: #e0e0e0;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: 500;
+    }
+    .tab-btn.active {
+      background: #d0d0d0;
+      color: #000;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Layout & Components */
+    .row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 320px; }
+
+    .box {
+      background: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e5e5;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+    tr:hover {
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+
+    label { display: block; margin-top: 10px; font-size: 14px; color: #555; }
+    input, textarea, button, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 4px;
+      background: #fafafa;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      background: #999;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #777;
+    }
+
+    .muted { color: #777; font-size: 12px; margin-bottom: 10px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    canvas { background: #fff; border: 1px solid #ccc; border-radius: 5px; }
+
+  </style>
+</head>
+<body>
+
+<h1>Админ-панель</h1>
+<div class="muted">Время хранится в UTC, отображение — локально (Europe/Warsaw).</div>
+
+<!-- Вкладки -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
+  <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
+  <button class="tab-btn" onclick="openTab('chartTab')">График</button>
+</div>
+
+<!-- TAB 1: Employees -->
+<div id="employees" class="tab-content active">
+  <div class="row">
+    <div class="col">
+      <h2>Сотрудники</h2>
+      <table id="empTable">
+        <thead>
+          <tr><th>ID</th><th>ФИО</th><th>NFC UID</th><th>Активен</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <h2>Создать / редактировать</h2>
+      <div class="box">
+        <input type="hidden" id="empId" />
+        <label>ФИО</label>
+        <input id="fullName" />
+        <label>NFC UID</label>
+        <input id="nfcUid" />
+        <div class="grid2">
+          <div>
+            <label>Должность</label>
+            <input id="position" />
+          </div>
+          <div>
+            <label><input type="checkbox" id="isActive" checked /> Активен</label>
+          </div>
+        </div>
+        <label>Комментарий</label>
+        <textarea id="comment"></textarea>
+        <button onclick="saveEmployee()">Сохранить</button>
+        <button onclick="clearForm()">Очистить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Stats -->
+<div id="stats" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <h2>Статистика / события</h2>
+      <div class="box">
+        <label>Сотрудник</label>
+        <select id="empSelect"></select>
+        <div class="grid2">
+          <div><label>from_date</label><input id="fromDate" type="date" /></div>
+          <div><label>to_date</label><input id="toDate" type="date" /></div>
+        </div>
+        <button onclick="loadStats()">Загрузить</button>
+        <div class="muted" id="statsInfo"></div>
+      </div>
+
+      <h3>События</h3>
+      <table id="eventsTable">
+        <thead>
+          <tr><th>ID</th><th>Dir</th><th>UTC</th><th>Local</th><th>Terminal</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>Дни (worked minutes)</h3>
+      <table id="dailyTable">
+        <thead>
+          <tr><th>Date</th><th>Minutes</th><th>First IN</th><th>Last OUT</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Chart -->
+<div id="chartTab" class="tab-content">
+  <div class="box">
+    <h2>График по отработанным минутам</h2>
+    <canvas id="chart" height="340"></canvas>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let chartInstance = null;
+
+function openTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`.tab-btn[onclick="openTab('${tabId}')"]`).classList.add('active');
+}
+
+function isoToday() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+async function loadEmployees() {
+  const res = await fetch(`${API}/employees/`);
+  const data = await res.json();
+  const tbody = document.querySelector("#empTable tbody");
+  tbody.innerHTML = "";
+  const sel = document.getElementById("empSelect");
+  sel.innerHTML = "";
+  data.forEach(emp => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
+    tr.onclick = () => loadEmployee(emp.id);
+    tbody.appendChild(tr);
+    const opt = document.createElement("option");
+    opt.value = emp.id;
+    opt.textContent = `${emp.id} — ${emp.full_name}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadEmployee(id) {
+  const res = await fetch(`${API}/employees/${id}`);
+  const emp = await res.json();
+  empId.value = emp.id;
+  fullName.value = emp.full_name;
+  nfcUid.value = emp.nfc_uid;
+  position.value = emp.position || "";
+  comment.value = emp.comment || "";
+  isActive.checked = !!emp.is_active;
+}
+
+async function saveEmployee() {
+  const id = empId.value;
+  const payload = {
+    full_name: fullName.value || undefined,
+    nfc_uid: nfcUid.value || undefined,
+    position: position.value || undefined,
+    comment: comment.value || undefined,
+    is_active: isActive.checked
+  };
+  if (id) {
+    await fetch(`${API}/employees/${id}`, {
+      method: "PATCH", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+  } else {
+    await fetch(`${API}/employees/`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+  }
+  clearForm();
+  loadEmployees();
+}
+
+function clearForm() {
+  empId.value = "";
+  fullName.value = "";
+  nfcUid.value = "";
+  position.value = "";
+  comment.value = "";
+  isActive.checked = true;
+}
+
+function renderEvents(events) {
+  const tbody = eventsTable.querySelector("tbody");
+  tbody.innerHTML = "";
+  events.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${e.id}</td><td>${e.direction}</td><td>${e.ts_utc}</td><td>${e.ts_local}</td><td>${e.terminal_id}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderDaily(items) {
+  const tbody = dailyTable.querySelector("tbody");
+  tbody.innerHTML = "";
+  items.forEach(d => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${d.date_local}</td><td>${d.worked_minutes}</td><td>${d.first_in_local || ""}</td><td>${d.last_out_local || ""}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderChart(items) {
+  const labels = items.map(x => x.date_local);
+  const values = items.map(x => x.worked_minutes);
+  const ctx = document.getElementById("chart");
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Worked minutes", data: values, backgroundColor: "#888" }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+async function loadStats() {
+  const empId = empSelect.value;
+  const fromDate = fromDateInput.value || fromDate.value;
+  const toDate = toDateInput.value || toDate.value;
+  if (!empId || !fromDate || !toDate) {
+    alert("Выбери сотрудника и диапазон дат");
+    return;
+  }
+  const res1 = await fetch(`${API}/stats/employee/${empId}`);
+  const s1 = await res1.json();
+  statsInfo.textContent = `total_minutes: ${s1.total_minutes} | intervals: ${s1.intervals.length} | events: ${s1.events.length}`;
+  renderEvents(s1.events);
+  const res2 = await fetch(`${API}/stats/employee/${empId}/daily?from_date=${fromDate}&to_date=${toDate}`);
+  const s2 = await res2.json();
+  renderDaily(s2.items);
+  renderChart(s2.items);
+}
+
+fromDate.value = isoToday();
+toDate.value = isoToday();
+loadEmployees();
+</script>
+
+</body>
+</html>
