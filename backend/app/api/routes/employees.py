@@ -7,7 +7,7 @@ from app.models.employee import Employee
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.crud import employee as employee_crud
 
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/employees", tags=["employees"])
 
 
 @router.post("/", response_model=EmployeeOut)

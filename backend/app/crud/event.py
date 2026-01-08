@@ -1,8 +1,11 @@
 ﻿from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, asc
+from datetime import datetime, timezone
 
 from app.core.time import ensure_utc
 from app.models.event import Event
+from app.models.employee import Employee
+from app.schemas.terminal import TerminalScanRequest
 
 
 def get_last_event_for_employee(db: Session, employee_id: int) -> Event | None:
@@ -17,7 +20,7 @@ def get_last_event_for_employee(db: Session, employee_id: int) -> Event | None:
 def create_event(
     db: Session,
     employee_id: int,
-    terminal_id: int,
+    terminal_id: int | str,
     direction: str,
     ts,
 ) -> Event:
@@ -27,22 +30,22 @@ def create_event(
 
     last = get_last_event_for_employee(db, employee_id)
 
-    # Простейшая валидация: нельзя два раза подряд IN или OUT
     if last and last.direction.upper() == direction:
         raise ValueError(f"Duplicate direction: last was {last.direction}")
 
-    # Нормализация времени: всё в UTC
     ts_utc = ensure_utc(ts)
 
-    ev = Event(employee_id=employee_id, terminal_id=terminal_id, direction=direction, ts=ts_utc)
+    ev = Event(
+        employee_id=employee_id,
+        terminal_id=str(terminal_id),
+        direction=direction,
+        ts=ts_utc,
+    )
     db.add(ev)
     db.commit()
     db.refresh(ev)
     return ev
 
-
-
-from sqlalchemy import asc
 
 def list_events_for_employee(db: Session, employee_id: int) -> list[Event]:
     return (
@@ -51,3 +54,50 @@ def list_events_for_employee(db: Session, employee_id: int) -> list[Event]:
         .order_by(asc(Event.ts))
         .all()
     )
+
+
+# =========================
+# FIXED: Terminal secure scan
+# =========================
+def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -> dict:
+    uid = payload.uid.strip().upper()
+    direction = payload.direction.strip().upper()
+    terminal_id = str(payload.terminal_id).strip()
+
+    employee = db.query(Employee).filter(Employee.nfc_uid == uid).first()
+    if not employee:
+        raise ValueError("Unknown UID (employee not registered)")
+
+    # защита от IN -> IN / OUT -> OUT
+    last = (
+        db.query(Event)
+        .filter(Event.employee_id == employee.id)
+        .order_by(desc(Event.ts))
+        .first()
+    )
+
+    if last and last.direction.upper() == direction:
+        raise ValueError(f"Duplicate direction: previous event is already {direction}")
+
+    # 🔴 ГЛАВНЫЙ ФИКС:
+    # payload.ts приходит в миллисекундах → конвертируем в datetime
+    ts_ms = int(payload.ts)
+    ts_dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
+
+    ts_utc = ensure_utc(ts_dt)
+
+    ev = Event(
+        employee_id=employee.id,
+        terminal_id=terminal_id,
+        direction=direction,
+        ts=ts_utc,
+    )
+
+    db.add(ev)
+    db.commit()
+    db.refresh(ev)
+
+    return {
+        "employee_id": employee.id,
+        "message": f"Registered {direction} for {employee.full_name}",
+    }

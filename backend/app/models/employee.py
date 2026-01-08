@@ -12,6 +12,9 @@ class Employee(Base):
     full_name: Mapped[str] = mapped_column(String(128), index=True)
     nfc_uid: Mapped[str] = mapped_column(String(64), unique=True, index=True)
 
+    # NEW: public key для challenge-response (Base64 DER)
+    public_key_b64: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     position: Mapped[str | None] = mapped_column(String(64), nullable=True)
