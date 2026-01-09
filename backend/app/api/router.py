@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter
+from fastapi import APIRouter
 
 from app.api.routes import auth, employees, events, schedules, stats, terminals, register
 

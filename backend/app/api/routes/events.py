@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -6,8 +6,6 @@ from app.schemas.event import NFCEventCreate
 from app.crud import employee as employee_crud
 from app.crud import terminal as terminal_crud
 from app.crud import event as event_crud
-from app.models.terminal import Terminal
-
 from app.api.deps import get_current_terminal
 from app.models.terminal import Terminal
 
@@ -53,4 +51,3 @@ def create_nfc_event(
         "employee": {"id": emp.id, "full_name": emp.full_name},
         "terminal": {"id": term.id, "name": term.name},
     }
-

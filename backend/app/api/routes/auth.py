@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.schemas.auth import LoginRequest, Token
