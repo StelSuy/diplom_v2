@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 
 from app.models.employee import Employee
 from app.schemas.terminal import TerminalRegisterRequest

@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 from datetime import datetime, timezone
 
@@ -20,7 +20,7 @@ def get_last_event_for_employee(db: Session, employee_id: int) -> Event | None:
 def create_event(
     db: Session,
     employee_id: int,
-    terminal_id: int | str,
+    terminal_id: int,
     direction: str,
     ts,
 ) -> Event:
@@ -37,7 +37,7 @@ def create_event(
 
     ev = Event(
         employee_id=employee_id,
-        terminal_id=str(terminal_id),
+        terminal_id=terminal_id,
         direction=direction,
         ts=ts_utc,
     )
@@ -62,7 +62,7 @@ def list_events_for_employee(db: Session, employee_id: int) -> list[Event]:
 def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -> dict:
     uid = payload.uid.strip().upper()
     direction = payload.direction.strip().upper()
-    terminal_id = str(payload.terminal_id).strip()
+    terminal_id = payload.terminal_id
 
     employee = db.query(Employee).filter(Employee.nfc_uid == uid).first()
     if not employee:
