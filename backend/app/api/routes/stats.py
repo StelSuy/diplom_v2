@@ -13,7 +13,11 @@ from app.schemas.stats import EmployeeDailyStats, DailyWorkStat
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import require_admin
 
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter(
+    prefix="/stats",
+    dependencies=[Depends(require_admin)]
+)
+
 
 
 

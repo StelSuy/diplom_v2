@@ -17,5 +17,9 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "admin123"
 
+    # 🔹 ОГРАНИЧЕНИЕ МЕЖДУ СКАНАМИ ТЕРМИНАЛА в секундах
+    terminal_scan_cooldown_seconds: int = 5
+
+
 
 settings = Settings()

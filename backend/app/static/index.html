@@ -13,37 +13,75 @@
       color: #333;
     }
 
-    h1 {
-      margin-bottom: 20px;
-      font-weight: 500;
-      color: #222;
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 15px;
+    h1 {
+      margin: 0;
+      font-weight: 500;
+      color: #222;
+      font-size: 22px;
     }
+
+    .muted { color: #777; font-size: 12px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 999px;
+      padding: 6px 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      font-size: 12px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 99px;
+      background: #999;
+    }
+    .dot.ok { background: #2d8a4b; }
+    .dot.bad { background: #b43a3a; }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      background: #999;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 8px;
+      transition: 0.15s;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .btn:hover { background: #777; }
+    .btn.secondary {
+      background: #e0e0e0;
+      color: #111;
+      border: 1px solid #d3d3d3;
+    }
+    .btn.secondary:hover { background: #d6d6d6; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin: 10px 0 15px; flex-wrap: wrap; }
     .tab-btn {
       background: #e0e0e0;
       border: none;
       padding: 10px 16px;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
       transition: 0.2s;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 13px;
     }
-    .tab-btn.active {
-      background: #d0d0d0;
-      color: #000;
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
+    .tab-btn.active { background: #d0d0d0; color: #000; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     /* Layout & Components */
     .row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
@@ -52,293 +90,622 @@
     .box {
       background: #fff;
       padding: 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      border: 1px solid #eee;
     }
 
     table {
       border-collapse: collapse;
       width: 100%;
       background: #fff;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
+      border: 1px solid #eee;
     }
     th, td {
-      border-bottom: 1px solid #e5e5e5;
+      border-bottom: 1px solid #eaeaea;
       padding: 8px 10px;
       text-align: left;
+      font-size: 13px;
     }
-    th {
-      background: #f0f0f0;
-      font-weight: 600;
+    th { background: #f0f0f0; font-weight: 700; }
+    tr:hover { background: #f8f8f8; cursor: pointer; }
+
+    label { display: block; margin-top: 10px; font-size: 13px; color: #555; font-weight: 600; }
+    input, textarea, select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin-top: 6px;
+      background: #fafafa;
+      font-size: 13px;
+      outline: none;
     }
-    tr:hover {
-      background: #f8f8f8;
-      cursor: pointer;
+    textarea { min-height: 88px; resize: vertical; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    canvas {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 10px;
     }
 
-    label { display: block; margin-top: 10px; font-size: 14px; color: #555; }
-    input, textarea, button, select {
+    /* Login modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9999;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      margin-top: 4px;
+      max-width: 440px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      border: 1px solid #eee;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 14px 16px;
+      background: #f3f3f3;
+      border-bottom: 1px solid #e7e7e7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .modal-title { font-weight: 800; font-size: 14px; color: #111; }
+    .modal-body { padding: 16px; }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 14px 16px;
+      border-top: 1px solid #eee;
       background: #fafafa;
     }
-    button {
-      cursor: pointer;
-      border: none;
-      background: #999;
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
+    .error {
       margin-top: 10px;
-      transition: 0.2s;
+      background: #fff3f3;
+      border: 1px solid #f1c1c1;
+      color: #7e1e1e;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      display: none;
+      white-space: pre-wrap;
     }
-    button:hover {
-      background: #777;
+    .info {
+      margin-top: 10px;
+      background: #f7f7f7;
+      border: 1px solid #e6e6e6;
+      color: #444;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      white-space: pre-wrap;
     }
-
-    .muted { color: #777; font-size: 12px; margin-bottom: 10px; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    canvas { background: #fff; border: 1px solid #ccc; border-radius: 5px; }
-
   </style>
 </head>
 <body>
 
-<h1>Админ-панель</h1>
-<div class="muted">Время хранится в UTC, отображение — локально (Europe/Warsaw).</div>
-
-<!-- Вкладки -->
-<div class="tabs">
-  <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
-  <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
-  <button class="tab-btn" onclick="openTab('chartTab')">График</button>
-</div>
-
-<!-- TAB 1: Employees -->
-<div id="employees" class="tab-content active">
-  <div class="row">
-    <div class="col">
-      <h2>Сотрудники</h2>
-      <table id="empTable">
-        <thead>
-          <tr><th>ID</th><th>ФИО</th><th>NFC UID</th><th>Активен</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+  <div class="topbar">
+    <div>
+      <h1>Админ-панель</h1>
+      <div class="muted">UTC хранение; отображение — локально (Europe/Warsaw).</div>
     </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="status-pill" title="Состояние авторизации и API">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Не авторизован</span>
+      </div>
+      <button class="btn secondary" onclick="openLogin()">Войти</button>
+      <button class="btn" onclick="logout()">Выйти</button>
+    </div>
+  </div>
 
-    <div class="col">
-      <h2>Создать / редактировать</h2>
-      <div class="box">
-        <input type="hidden" id="empId" />
-        <label>ФИО</label>
-        <input id="fullName" />
-        <label>NFC UID</label>
-        <input id="nfcUid" />
-        <div class="grid2">
-          <div>
-            <label>Должность</label>
-            <input id="position" />
-          </div>
-          <div>
-            <label><input type="checkbox" id="isActive" checked /> Активен</label>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
+    <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
+    <button class="tab-btn" onclick="openTab('chartTab')">График</button>
+  </div>
+
+  <!-- TAB 1: Employees -->
+  <div id="employees" class="tab-content active">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="font-weight:800;">Сотрудники</div>
+            <button class="btn secondary" onclick="loadEmployees()">Обновить</button>
           </div>
         </div>
-        <label>Комментарий</label>
-        <textarea id="comment"></textarea>
-        <button onclick="saveEmployee()">Сохранить</button>
-        <button onclick="clearForm()">Очистить</button>
+
+        <table id="empTable">
+          <thead>
+            <tr><th>ID</th><th>ФИО</th><th>NFC UID</th><th>Активен</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="col">
+        <div class="box">
+          <div style="font-weight:800; margin-bottom:8px;">Создать / редактировать</div>
+
+          <input type="hidden" id="empId" />
+          <label>ФИО</label>
+          <input id="fullName" />
+          <label>NFC UID</label>
+          <input id="nfcUid" />
+          <div class="grid2">
+            <div>
+              <label>Должность</label>
+              <input id="position" />
+            </div>
+            <div>
+              <label style="margin-top: 10px;">
+                <input type="checkbox" id="isActive" checked />
+                Активен
+              </label>
+            </div>
+          </div>
+          <label>Комментарий</label>
+          <textarea id="comment"></textarea>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" onclick="saveEmployee()">Сохранить</button>
+            <button class="btn secondary" onclick="clearForm()">Очистить</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- TAB 2: Stats -->
-<div id="stats" class="tab-content">
-  <div class="row">
-    <div class="col">
-      <h2>Статистика / события</h2>
-      <div class="box">
-        <label>Сотрудник</label>
-        <select id="empSelect"></select>
-        <div class="grid2">
-          <div><label>from_date</label><input id="fromDate" type="date" /></div>
-          <div><label>to_date</label><input id="toDate" type="date" /></div>
+  <!-- TAB 2: Stats -->
+  <div id="stats" class="tab-content">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="font-weight:800;">Статистика / события</div>
+
+          <label>Сотрудник</label>
+          <select id="empSelect"></select>
+
+          <div class="grid2">
+            <div><label>from_date</label><input id="fromDate" type="date" /></div>
+            <div><label>to_date</label><input id="toDate" type="date" /></div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" onclick="loadStats()">Загрузить</button>
+            <button class="btn secondary" onclick="openTab('chartTab');">К графику</button>
+          </div>
+
+          <div class="info" id="statsInfo">Готово.</div>
         </div>
-        <button onclick="loadStats()">Загрузить</button>
-        <div class="muted" id="statsInfo"></div>
+
+        <div class="box">
+          <div style="font-weight:800; margin-bottom:8px;">События (IN/OUT)</div>
+          <table id="eventsTable">
+            <thead>
+              <tr><th>ID</th><th>Dir</th><th>UTC</th><th>Local</th><th>Terminal</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="box">
+          <div style="font-weight:800; margin-bottom:8px;">Дни (worked minutes)</div>
+          <table id="dailyTable">
+            <thead>
+              <tr><th>Date</th><th>Minutes</th><th>First IN</th><th>Last OUT</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
-
-      <h3>События</h3>
-      <table id="eventsTable">
-        <thead>
-          <tr><th>ID</th><th>Dir</th><th>UTC</th><th>Local</th><th>Terminal</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-      <h3>Дни (worked minutes)</h3>
-      <table id="dailyTable">
-        <thead>
-          <tr><th>Date</th><th>Minutes</th><th>First IN</th><th>Last OUT</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
     </div>
   </div>
-</div>
 
-<!-- TAB 3: Chart -->
-<div id="chartTab" class="tab-content">
-  <div class="box">
-    <h2>График по отработанным минутам</h2>
-    <canvas id="chart" height="340"></canvas>
+  <!-- TAB 3: Chart -->
+  <div id="chartTab" class="tab-content">
+    <div class="box">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div style="font-weight:800;">График по отработанным минутам</div>
+        <button class="btn secondary" onclick="openTab('stats')">Назад</button>
+      </div>
+      <div class="muted" style="margin-top:6px;">Если Chart.js не загрузится из CDN, график может не отображаться. Это не ломает таблицы.</div>
+      <div style="margin-top:12px;">
+        <canvas id="chart" height="340"></canvas>
+      </div>
+    </div>
   </div>
-</div>
+
+  <!-- Login Modal -->
+  <div id="loginBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">Вход администратора</div>
+        <button class="btn secondary" onclick="closeLogin()">Закрыть</button>
+      </div>
+      <div class="modal-body">
+        <label>Логин</label>
+        <input id="loginInput" autocomplete="username" />
+
+        <label>Пароль</label>
+        <input id="passwordInput" type="password" autocomplete="current-password" />
+
+        <div id="loginError" class="error"></div>
+        <div class="info">
+          Требуется для эндпоинтов stats (они защищены require_admin).
+          После входа токен сохраняется в localStorage и подставляется в Authorization заголовок.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" onclick="closeLogin()">Отмена</button>
+        <button class="btn" onclick="login()">Войти</button>
+      </div>
+    </div>
+  </div>
 
 <script>
-const API = "/api";
-let chartInstance = null;
+  const API_ROOT = "/api";
+  let chartInstance = null;
 
-function openTab(tabId) {
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  document.querySelector(`.tab-btn[onclick="openTab('${tabId}')"]`).classList.add('active');
-}
+  // Links to date inputs (to avoid ReferenceError)
+  const fromDateInput = document.getElementById("fromDate");
+  const toDateInput   = document.getElementById("toDate");
 
-function isoToday() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth()+1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-async function loadEmployees() {
-  const res = await fetch(`${API}/employees/`);
-  const data = await res.json();
-  const tbody = document.querySelector("#empTable tbody");
-  tbody.innerHTML = "";
-  const sel = document.getElementById("empSelect");
-  sel.innerHTML = "";
-  data.forEach(emp => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
-    tr.onclick = () => loadEmployee(emp.id);
-    tbody.appendChild(tr);
-    const opt = document.createElement("option");
-    opt.value = emp.id;
-    opt.textContent = `${emp.id} — ${emp.full_name}`;
-    sel.appendChild(opt);
-  });
-}
-
-async function loadEmployee(id) {
-  const res = await fetch(`${API}/employees/${id}`);
-  const emp = await res.json();
-  empId.value = emp.id;
-  fullName.value = emp.full_name;
-  nfcUid.value = emp.nfc_uid;
-  position.value = emp.position || "";
-  comment.value = emp.comment || "";
-  isActive.checked = !!emp.is_active;
-}
-
-async function saveEmployee() {
-  const id = empId.value;
-  const payload = {
-    full_name: fullName.value || undefined,
-    nfc_uid: nfcUid.value || undefined,
-    position: position.value || undefined,
-    comment: comment.value || undefined,
-    is_active: isActive.checked
-  };
-  if (id) {
-    await fetch(`${API}/employees/${id}`, {
-      method: "PATCH", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(payload)
-    });
-  } else {
-    await fetch(`${API}/employees/`, {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(payload)
-    });
+  function setStatus(ok, text) {
+    const dot = document.getElementById("statusDot");
+    const t = document.getElementById("statusText");
+    dot.classList.remove("ok", "bad");
+    if (ok === true) dot.classList.add("ok");
+    if (ok === false) dot.classList.add("bad");
+    t.textContent = text;
   }
-  clearForm();
-  loadEmployees();
-}
 
-function clearForm() {
-  empId.value = "";
-  fullName.value = "";
-  nfcUid.value = "";
-  position.value = "";
-  comment.value = "";
-  isActive.checked = true;
-}
+  function getToken() {
+    return localStorage.getItem("admin_token") || "";
+  }
 
-function renderEvents(events) {
-  const tbody = eventsTable.querySelector("tbody");
-  tbody.innerHTML = "";
-  events.forEach(e => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${e.id}</td><td>${e.direction}</td><td>${e.ts_utc}</td><td>${e.ts_local}</td><td>${e.terminal_id}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+  function setToken(token) {
+    localStorage.setItem("admin_token", token);
+  }
 
-function renderDaily(items) {
-  const tbody = dailyTable.querySelector("tbody");
-  tbody.innerHTML = "";
-  items.forEach(d => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${d.date_local}</td><td>${d.worked_minutes}</td><td>${d.first_in_local || ""}</td><td>${d.last_out_local || ""}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+  function clearToken() {
+    localStorage.removeItem("admin_token");
+  }
 
-function renderChart(items) {
-  const labels = items.map(x => x.date_local);
-  const values = items.map(x => x.worked_minutes);
-  const ctx = document.getElementById("chart");
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{ label: "Worked minutes", data: values, backgroundColor: "#888" }]
-    },
-    options: { responsive: true, scales: { y: { beginAtZero: true } } }
-  });
-}
+  function openLogin() {
+    document.getElementById("loginError").style.display = "none";
+    document.getElementById("loginError").textContent = "";
+    document.getElementById("loginBackdrop").classList.add("show");
+    setTimeout(() => document.getElementById("loginInput").focus(), 0);
+  }
 
-async function loadStats() {
-  const empId = empSelect.value;
-  const fromDate = fromDateInput.value || fromDate.value;
-  const toDate = toDateInput.value || toDate.value;
-  if (!empId || !fromDate || !toDate) {
-    alert("Выбери сотрудника и диапазон дат");
+  function closeLogin() {
+    document.getElementById("loginBackdrop").classList.remove("show");
+  }
+
+  function logout() {
+    clearToken();
+    setStatus(false, "Не авторизован");
+    openLogin();
+  }
+
+  // Robust token extraction from login response
+  function extractToken(payload) {
+    if (!payload) return "";
+
+    // If backend returns plain string
+    if (typeof payload === "string") return payload.trim();
+
+    // Common JWT style
+    if (payload.access_token) return String(payload.access_token).trim();
+
+    // Alternate
+    if (payload.token) return String(payload.token).trim();
+
+    // Sometimes nested
+    if (payload.data && payload.data.access_token) return String(payload.data.access_token).trim();
+    if (payload.data && payload.data.token) return String(payload.data.token).trim();
+
+    return "";
+  }
+
+async function login() {
+  const loginVal = document.getElementById("loginInput").value.trim();
+  const passVal  = document.getElementById("passwordInput").value;
+
+  const errBox = document.getElementById("loginError");
+  errBox.style.display = "none";
+  errBox.textContent = "";
+
+  if (!loginVal || !passVal) {
+    errBox.textContent = "Заполни логин и пароль.";
+    errBox.style.display = "block";
     return;
   }
-  const res1 = await fetch(`${API}/stats/employee/${empId}`);
-  const s1 = await res1.json();
-  statsInfo.textContent = `total_minutes: ${s1.total_minutes} | intervals: ${s1.intervals.length} | events: ${s1.events.length}`;
-  renderEvents(s1.events);
-  const res2 = await fetch(`${API}/stats/employee/${empId}/daily?from_date=${fromDate}&to_date=${toDate}`);
-  const s2 = await res2.json();
-  renderDaily(s2.items);
-  renderChart(s2.items);
+
+  try {
+    const res = await fetch(`${API_ROOT}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // ВАЖНО: именно username/password
+      body: JSON.stringify({ username: loginVal, password: passVal })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Login HTTP ${res.status}\n${txt}`);
+    }
+
+    const payload = await res.json().catch(async () => await res.text());
+    const token = extractToken(payload);
+
+    if (!token) {
+      throw new Error(
+        "Логин успешен, но токен не найден в ответе /api/login. " +
+        "Пришли JSON ответа — подгоню парсер."
+      );
+    }
+
+    setToken(token);
+    closeLogin();
+    setStatus(true, "Авторизован");
+    await loadEmployees();
+  } catch (e) {
+    errBox.textContent = String(e?.message || e);
+    errBox.style.display = "block";
+    setStatus(false, "Ошибка входа");
+  }
 }
 
-fromDate.value = isoToday();
-toDate.value = isoToday();
-loadEmployees();
+
+  async function apiFetch(path, opts = {}) {
+    const token = getToken();
+    const headers = new Headers(opts.headers || {});
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const res = await fetch(`${API_ROOT}${path}`, { ...opts, headers });
+
+    if (res.status === 401) {
+      // Token missing/invalid -> force login
+      setStatus(false, "401: требуется вход");
+      openLogin();
+    }
+
+    return res;
+  }
+
+  function openTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+
+    // Activate matching button
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      const onclick = b.getAttribute("onclick") || "";
+      if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
+    });
+  }
+
+  function isoToday() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function fmtJsonError(text) {
+    // avoid huge dumps
+    if (!text) return "";
+    if (text.length > 1200) return text.slice(0, 1200) + "\n...trimmed...";
+    return text;
+  }
+
+  async function loadEmployees() {
+    const res = await apiFetch(`/employees/`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`employees HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+    const data = await res.json();
+
+    const tbody = document.querySelector("#empTable tbody");
+    tbody.innerHTML = "";
+
+    const sel = document.getElementById("empSelect");
+    sel.innerHTML = "";
+
+    data.forEach(emp => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
+      tr.onclick = () => loadEmployee(emp.id);
+      tbody.appendChild(tr);
+
+      const opt = document.createElement("option");
+      opt.value = emp.id;
+      opt.textContent = `${emp.id} — ${emp.full_name}`;
+      sel.appendChild(opt);
+    });
+
+    // if we reached here, API works with current token
+    setStatus(!!getToken(), getToken() ? "Авторизован" : "Не авторизован");
+  }
+
+  async function loadEmployee(id) {
+    const res = await apiFetch(`/employees/${id}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+    const emp = await res.json();
+    empId.value = emp.id;
+    fullName.value = emp.full_name;
+    nfcUid.value = emp.nfc_uid;
+    position.value = emp.position || "";
+    comment.value = emp.comment || "";
+    isActive.checked = !!emp.is_active;
+  }
+
+  async function saveEmployee() {
+    const id = empId.value;
+    const payload = {
+      full_name: fullName.value || undefined,
+      nfc_uid: nfcUid.value || undefined,
+      position: position.value || undefined,
+      comment: comment.value || undefined,
+      is_active: isActive.checked
+    };
+
+    let res;
+    if (id) {
+      res = await apiFetch(`/employees/${id}`, {
+        method: "PATCH",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await apiFetch(`/employees/`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`save employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+
+    clearForm();
+    await loadEmployees();
+  }
+
+  function clearForm() {
+    empId.value = "";
+    fullName.value = "";
+    nfcUid.value = "";
+    position.value = "";
+    comment.value = "";
+    isActive.checked = true;
+  }
+
+  function renderEvents(events) {
+    const tbody = document.querySelector("#eventsTable tbody");
+    tbody.innerHTML = "";
+    events.forEach(e => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${e.id}</td><td>${String(e.direction || "").toUpperCase()}</td><td>${e.ts_utc}</td><td>${e.ts_local}</td><td>${e.terminal_id}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderDaily(items) {
+    const tbody = document.querySelector("#dailyTable tbody");
+    tbody.innerHTML = "";
+    items.forEach(d => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${d.date_local}</td><td>${d.worked_minutes}</td><td>${d.first_in_local || ""}</td><td>${d.last_out_local || ""}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderChart(items) {
+    if (!window.Chart) {
+      // Chart.js missing from CDN -> keep UX stable
+      return;
+    }
+    const labels = items.map(x => x.date_local);
+    const values = items.map(x => x.worked_minutes);
+    const ctx = document.getElementById("chart");
+
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{ label: "Worked minutes", data: values }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  async function loadStats() {
+    const empIdVal = document.getElementById("empSelect").value;
+    const fromDate = fromDateInput.value;
+    const toDate = toDateInput.value;
+
+    if (!empIdVal || !fromDate || !toDate) {
+      alert("Выбери сотрудника и диапазон дат");
+      return;
+    }
+
+    // 1) aggregate + events
+    const res1 = await apiFetch(`/stats/employee/${empIdVal}`);
+    if (!res1.ok) {
+      const txt = await res1.text().catch(() => "");
+      throw new Error(`stats employee HTTP ${res1.status}\n${fmtJsonError(txt)}`);
+    }
+    const s1 = await res1.json();
+
+    document.getElementById("statsInfo").textContent =
+      `total_minutes: ${s1.total_minutes} | intervals: ${s1.intervals.length} | events: ${s1.events.length}`;
+
+    renderEvents(s1.events);
+
+    // 2) daily
+    const res2 = await apiFetch(`/stats/employee/${empIdVal}/daily?from_date=${fromDate}&to_date=${toDate}`);
+    if (!res2.ok) {
+      const txt = await res2.text().catch(() => "");
+      throw new Error(`stats daily HTTP ${res2.status}\n${fmtJsonError(txt)}`);
+    }
+    const s2 = await res2.json();
+
+    renderDaily(s2.items);
+    renderChart(s2.items);
+
+    setStatus(true, "Авторизован");
+  }
+
+  // init
+  fromDateInput.value = isoToday();
+  toDateInput.value = isoToday();
+
+  // If no token, force login; else try load employees
+  (async () => {
+    const token = getToken();
+    if (!token) {
+      setStatus(false, "Не авторизован");
+      openLogin();
+      return;
+    }
+    try {
+      await loadEmployees();
+      setStatus(true, "Авторизован");
+    } catch (e) {
+      // token invalid or API error -> re-login
+      console.error(e);
+      setStatus(false, "Токен недействителен/ошибка");
+      openLogin();
+    }
+  })();
 </script>
 
 </body>
