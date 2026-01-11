@@ -196,6 +196,16 @@
       font-size: 12px;
       white-space: pre-wrap;
     }
+    .pill-open {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:11px;
+      border:1px solid #e0c3c3;
+      background:#fff3f3;
+      color:#7e1e1e;
+      margin-left:8px;
+    }
   </style>
 </head>
 <body>
@@ -215,14 +225,12 @@
     </div>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs">
     <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
     <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
     <button class="tab-btn" onclick="openTab('chartTab')">График</button>
   </div>
 
-  <!-- TAB 1: Employees -->
   <div id="employees" class="tab-content active">
     <div class="row">
       <div class="col">
@@ -274,7 +282,6 @@
     </div>
   </div>
 
-  <!-- TAB 2: Stats -->
   <div id="stats" class="tab-content">
     <div class="row">
       <div class="col">
@@ -308,10 +315,10 @@
         </div>
 
         <div class="box">
-          <div style="font-weight:800; margin-bottom:8px;">Дни (worked minutes)</div>
+          <div style="font-weight:800; margin-bottom:8px;">Дни</div>
           <table id="dailyTable">
             <thead>
-              <tr><th>Date</th><th>Minutes</th><th>First IN</th><th>Last OUT</th></tr>
+              <tr><th>Date</th><th>Shift worked (HH:MM:SS)</th><th>IN</th><th>OUT</th></tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -320,7 +327,6 @@
     </div>
   </div>
 
-  <!-- TAB 3: Chart -->
   <div id="chartTab" class="tab-content">
     <div class="box">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -334,7 +340,6 @@
     </div>
   </div>
 
-  <!-- Login Modal -->
   <div id="loginBackdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -365,7 +370,6 @@
   const API_ROOT = "/api";
   let chartInstance = null;
 
-  // Links to date inputs (to avoid ReferenceError)
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput   = document.getElementById("toDate");
 
@@ -378,17 +382,9 @@
     t.textContent = text;
   }
 
-  function getToken() {
-    return localStorage.getItem("admin_token") || "";
-  }
-
-  function setToken(token) {
-    localStorage.setItem("admin_token", token);
-  }
-
-  function clearToken() {
-    localStorage.removeItem("admin_token");
-  }
+  function getToken() { return localStorage.getItem("admin_token") || ""; }
+  function setToken(token) { localStorage.setItem("admin_token", token); }
+  function clearToken() { localStorage.removeItem("admin_token"); }
 
   function openLogin() {
     document.getElementById("loginError").style.display = "none";
@@ -397,9 +393,7 @@
     setTimeout(() => document.getElementById("loginInput").focus(), 0);
   }
 
-  function closeLogin() {
-    document.getElementById("loginBackdrop").classList.remove("show");
-  }
+  function closeLogin() { document.getElementById("loginBackdrop").classList.remove("show"); }
 
   function logout() {
     clearToken();
@@ -407,74 +401,59 @@
     openLogin();
   }
 
-  // Robust token extraction from login response
   function extractToken(payload) {
     if (!payload) return "";
-
-    // If backend returns plain string
     if (typeof payload === "string") return payload.trim();
-
-    // Common JWT style
     if (payload.access_token) return String(payload.access_token).trim();
-
-    // Alternate
     if (payload.token) return String(payload.token).trim();
-
-    // Sometimes nested
     if (payload.data && payload.data.access_token) return String(payload.data.access_token).trim();
     if (payload.data && payload.data.token) return String(payload.data.token).trim();
-
     return "";
   }
 
-async function login() {
-  const loginVal = document.getElementById("loginInput").value.trim();
-  const passVal  = document.getElementById("passwordInput").value;
+  async function login() {
+    const loginVal = document.getElementById("loginInput").value.trim();
+    const passVal  = document.getElementById("passwordInput").value;
 
-  const errBox = document.getElementById("loginError");
-  errBox.style.display = "none";
-  errBox.textContent = "";
+    const errBox = document.getElementById("loginError");
+    errBox.style.display = "none";
+    errBox.textContent = "";
 
-  if (!loginVal || !passVal) {
-    errBox.textContent = "Заполни логин и пароль.";
-    errBox.style.display = "block";
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_ROOT}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // ВАЖНО: именно username/password
-      body: JSON.stringify({ username: loginVal, password: passVal })
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`Login HTTP ${res.status}\n${txt}`);
+    if (!loginVal || !passVal) {
+      errBox.textContent = "Заполни логин и пароль.";
+      errBox.style.display = "block";
+      return;
     }
 
-    const payload = await res.json().catch(async () => await res.text());
-    const token = extractToken(payload);
+    try {
+      const res = await fetch(`${API_ROOT}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginVal, password: passVal })
+      });
 
-    if (!token) {
-      throw new Error(
-        "Логин успешен, но токен не найден в ответе /api/login. " +
-        "Пришли JSON ответа — подгоню парсер."
-      );
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Login HTTP ${res.status}\n${txt}`);
+      }
+
+      const payload = await res.json().catch(async () => await res.text());
+      const token = extractToken(payload);
+
+      if (!token) {
+        throw new Error("Логин успешен, но токен не найден в ответе /api/login.");
+      }
+
+      setToken(token);
+      closeLogin();
+      setStatus(true, "Авторизован");
+      await loadEmployees();
+    } catch (e) {
+      errBox.textContent = String(e?.message || e);
+      errBox.style.display = "block";
+      setStatus(false, "Ошибка входа");
     }
-
-    setToken(token);
-    closeLogin();
-    setStatus(true, "Авторизован");
-    await loadEmployees();
-  } catch (e) {
-    errBox.textContent = String(e?.message || e);
-    errBox.style.display = "block";
-    setStatus(false, "Ошибка входа");
   }
-}
-
 
   async function apiFetch(path, opts = {}) {
     const token = getToken();
@@ -484,7 +463,6 @@ async function login() {
     const res = await fetch(`${API_ROOT}${path}`, { ...opts, headers });
 
     if (res.status === 401) {
-      // Token missing/invalid -> force login
       setStatus(false, "401: требуется вход");
       openLogin();
     }
@@ -497,7 +475,6 @@ async function login() {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
 
-    // Activate matching button
     document.querySelectorAll('.tab-btn').forEach(b => {
       const onclick = b.getAttribute("onclick") || "";
       if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
@@ -513,7 +490,6 @@ async function login() {
   }
 
   function fmtJsonError(text) {
-    // avoid huge dumps
     if (!text) return "";
     if (text.length > 1200) return text.slice(0, 1200) + "\n...trimmed...";
     return text;
@@ -545,7 +521,6 @@ async function login() {
       sel.appendChild(opt);
     });
 
-    // if we reached here, API works with current token
     setStatus(!!getToken(), getToken() ? "Авторизован" : "Не авторизован");
   }
 
@@ -607,31 +582,100 @@ async function login() {
     isActive.checked = true;
   }
 
+  function fmtTime(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+  function buildShiftsFromEvents(events) {
+    // events: [{direction, ts_local, ...}] уже отсортированы по ts в API
+    // строим интервалы IN->OUT, группируем по local date of IN
+    const shifts = [];
+    let openIn = null;
+
+    for (const e of events) {
+      const dir = String(e.direction || "").toUpperCase();
+      if (dir === "IN") {
+        openIn = e;
+      } else if (dir === "OUT") {
+        if (openIn) {
+          shifts.push({ in: openIn, out: e });
+          openIn = null;
+        }
+      }
+    }
+
+    // незакрытая смена
+    if (openIn) {
+      shifts.push({ in: openIn, out: null });
+    }
+
+    // преобразуем в строки таблицы
+    return shifts.map(s => {
+      const inLocal = s.in?.ts_local ? new Date(s.in.ts_local) : null;
+      const outLocal = s.out?.ts_local ? new Date(s.out.ts_local) : null;
+
+      const dateLocal = inLocal
+        ? inLocal.toISOString().slice(0, 10) // YYYY-MM-DD
+        : "";
+
+      let workedSeconds = 0;
+      if (inLocal && outLocal && outLocal >= inLocal) {
+        workedSeconds = Math.floor((outLocal - inLocal) / 1000);
+      }
+
+      const hh = String(Math.floor(workedSeconds / 3600)).padStart(2, "0");
+      const mm = String(Math.floor((workedSeconds % 3600) / 60)).padStart(2, "0");
+      const ss = String(workedSeconds % 60).padStart(2, "0");
+      const workedHMS = `${hh}:${mm}:${ss}`;
+
+      return {
+        date_local: dateLocal,
+        worked_hms: workedHMS,
+        first_in_local: s.in?.ts_local || null,
+        last_out_local: s.out?.ts_local || null,
+        open_shift: !s.out
+      };
+    });
+  }
+
   function renderEvents(events) {
     const tbody = document.querySelector("#eventsTable tbody");
     tbody.innerHTML = "";
     events.forEach(e => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${e.id}</td><td>${String(e.direction || "").toUpperCase()}</td><td>${e.ts_utc}</td><td>${e.ts_local}</td><td>${e.terminal_id}</td>`;
+      tr.innerHTML = `
+        <td>${e.id}</td>
+        <td>${String(e.direction || "").toUpperCase()}</td>
+        <td>${fmtTime(e.ts_utc)}</td>
+        <td>${fmtTime(e.ts_local)}</td>
+        <td>${e.terminal_id}</td>
+      `;
       tbody.appendChild(tr);
     });
   }
 
-  function renderDaily(items) {
+  function renderDailyFromEvents(events) {
     const tbody = document.querySelector("#dailyTable tbody");
     tbody.innerHTML = "";
-    items.forEach(d => {
+
+    const rows = buildShiftsFromEvents(events);
+
+    rows.forEach(r => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${d.date_local}</td><td>${d.worked_minutes}</td><td>${d.first_in_local || ""}</td><td>${d.last_out_local || ""}</td>`;
+      tr.innerHTML = `
+        <td>${r.date_local}</td>
+        <td><strong>${r.worked_hms}</strong></td>
+        <td>${fmtTime(r.first_in_local)}</td>
+        <td>${r.open_shift ? "" : fmtTime(r.last_out_local)}</td>
+      `;
       tbody.appendChild(tr);
     });
   }
 
+
   function renderChart(items) {
-    if (!window.Chart) {
-      // Chart.js missing from CDN -> keep UX stable
-      return;
-    }
+    if (!window.Chart) return;
     const labels = items.map(x => x.date_local);
     const values = items.map(x => x.worked_minutes);
     const ctx = document.getElementById("chart");
@@ -657,7 +701,6 @@ async function login() {
       return;
     }
 
-    // 1) aggregate + events
     const res1 = await apiFetch(`/stats/employee/${empIdVal}`);
     if (!res1.ok) {
       const txt = await res1.text().catch(() => "");
@@ -670,7 +713,6 @@ async function login() {
 
     renderEvents(s1.events);
 
-    // 2) daily
     const res2 = await apiFetch(`/stats/employee/${empIdVal}/daily?from_date=${fromDate}&to_date=${toDate}`);
     if (!res2.ok) {
       const txt = await res2.text().catch(() => "");
@@ -678,17 +720,16 @@ async function login() {
     }
     const s2 = await res2.json();
 
-    renderDaily(s2.items);
+    renderDailyFromEvents(s1.events);
     renderChart(s2.items);
+
 
     setStatus(true, "Авторизован");
   }
 
-  // init
   fromDateInput.value = isoToday();
   toDateInput.value = isoToday();
 
-  // If no token, force login; else try load employees
   (async () => {
     const token = getToken();
     if (!token) {
@@ -700,7 +741,6 @@ async function login() {
       await loadEmployees();
       setStatus(true, "Авторизован");
     } catch (e) {
-      // token invalid or API error -> re-login
       console.error(e);
       setStatus(false, "Токен недействителен/ошибка");
       openLogin();
