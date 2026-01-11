@@ -1,11 +1,13 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿import logging
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from app.api.deps import require_admin
 from app.db.session import get_db
 from app.crud import terminal as terminal_crud
 
-# NEW imports (schemas + crud for scan/register)
 from app.schemas.terminal import (
     TerminalRegisterRequest,
     TerminalRegisterResponse,
@@ -14,16 +16,19 @@ from app.schemas.terminal import (
     TerminalSecureScanRequest,
     TerminalSecureScanResponse,
 )
+
 from app.crud.employee import create_employee_from_terminal_registration
 from app.crud.event import create_event_from_terminal_scan
 
-# SECURITY
 from app.security.verify import verify_signature
 from app.crud import employee as employee_crud
+from app.models.event import Event
+
+log = logging.getLogger("uvicorn.error")
 
 
 # =========================
-# Admin-only router (as you had)
+# Admin-only router
 # =========================
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -75,8 +80,9 @@ def terminal_register(payload: TerminalRegisterRequest, db: Session = Depends(ge
 @router_public.post("/scan", response_model=TerminalScanResponse)
 def terminal_scan(payload: TerminalScanRequest, db: Session = Depends(get_db)):
     """
-    Android Scan:
+    Android Scan (non-secure):
     - send {uid, terminal_id, direction, ts}
+    NOTE: direction может игнорироваться на сервере (см. crud/event.py)
     """
     try:
         result = create_event_from_terminal_scan(db=db, payload=payload)
@@ -92,22 +98,29 @@ def terminal_scan(payload: TerminalScanRequest, db: Session = Depends(get_db)):
 # =========================
 # SECURE SCAN (Challenge–Response)
 # =========================
-@router_public.post("/secure-scan")
+@router_public.post("/secure-scan", response_model=TerminalSecureScanResponse)
 def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session = Depends(get_db)):
     """
     Android Secure Scan:
     - terminal reads employee_uid via HCE
-    - terminal generates challenge (random bytes) and sends to employee via APDU
-    - employee returns signature_b64
+    - terminal generates challenge and gets signature from employee
     - terminal sends {employee_uid, terminal_id, direction, ts, challenge_b64, signature_b64}
     - backend verifies signature using employee.public_key_b64
+    - then creates event (direction is determined server-side)
     """
+    log.error(
+        f"SECURE_SCAN payload employee_uid={payload.employee_uid} "
+        f"direction={payload.direction} terminal_id={payload.terminal_id} ts={payload.ts}"
+    )
+
     # 1) найти сотрудника по employee_uid
     employee = employee_crud.get_by_uid(db, uid=payload.employee_uid)
     if not employee:
+        log.info(f"SECURE_SCAN payload ...")
         raise HTTPException(status_code=404, detail="Employee not found")
 
     if not employee.public_key_b64:
+        log.info(f"SECURE_SCAN saved direction=...")
         raise HTTPException(status_code=400, detail="Employee has no public key registered")
 
     # 2) проверить подпись
@@ -117,21 +130,29 @@ def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session = Depen
         signature_b64=payload.signature_b64,
     )
     if not ok:
+        log.error("SECURE_SCAN bad_signature")
+        # 200, но ok=false — Android должен обработать как отказ
         return TerminalSecureScanResponse(ok=False, message="bad_signature", employee_id=None)
 
-    # 3) если подпись ок — создаём событие как обычно
-    # Используем ту же бизнес-логику, что и в обычном scan,
-    # но передаём дальше уже проверенный employee_uid
+    # 3) подпись ок — создаём событие через общую логику
     try:
-        # Можно переиспользовать create_event_from_terminal_scan,
-        # если он принимает uid/terminal_id/direction/ts
         scan_payload = TerminalScanRequest(
             uid=payload.employee_uid,
             terminal_id=payload.terminal_id,
-            direction=payload.direction,
+            direction=payload.direction,  # может игнорироваться в CRUD
             ts=payload.ts,
         )
         result = create_event_from_terminal_scan(db=db, payload=scan_payload)
+
+        # Логируем то, что реально записалось в БД (последнее событие)
+        last = (
+            db.query(Event)
+            .filter(Event.employee_id == result["employee_id"])
+            .order_by(desc(Event.ts))
+            .first()
+        )
+        if last:
+            log.error(f"SECURE_SCAN saved direction={last.direction} ts={last.ts}")
 
         return TerminalSecureScanResponse(
             ok=True,
@@ -139,4 +160,5 @@ def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session = Depen
             employee_id=result["employee_id"],
         )
     except ValueError as e:
+        log.error(f"SECURE_SCAN 400: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
