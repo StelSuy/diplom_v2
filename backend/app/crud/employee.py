@@ -4,6 +4,15 @@ from app.models.employee import Employee
 from app.schemas.terminal import TerminalRegisterRequest
 
 
+
+
+def get_all(db: Session, only_active: bool = True) -> list[Employee]:
+    q = db.query(Employee)
+    if only_active:
+        q = q.filter(Employee.is_active == True)  # noqa: E712
+    return q.order_by(Employee.full_name.asc()).all()
+
+
 def get_by_id(db: Session, employee_id: int) -> Employee | None:
     return db.query(Employee).filter(Employee.id == employee_id).first()
 

@@ -135,6 +135,41 @@
       padding: 10px;
     }
 
+    /* Schedule */
+    .sched-wrap { overflow:auto; }
+    #scheduleWideTable th, #scheduleWideTable td { text-align:center; white-space:nowrap; }
+    #scheduleWideTable td.editable { cursor:pointer; font-weight:700; }
+    #scheduleWideTable td.editable:hover { background:#eef2ff; }
+
+    #scheduleMatrix th, #scheduleMatrix td { text-align:center; white-space:nowrap; }
+    #scheduleMatrix td.matrix-cell {
+      cursor:pointer;
+      font-weight:700;
+      vertical-align: top;
+      min-width: 92px;
+      height: 64px;
+    }
+    #scheduleMatrix td.matrix-cell:hover { background:#eef2ff; }
+    .daynum {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-weight:800;
+      font-size:12px;
+      color:#111;
+      margin-bottom:4px;
+    }
+    .shifttext {
+      font-weight:700;
+      font-size:12px;
+      color:#222;
+    }
+    .empty {
+      background:#fafafa;
+      color:#999;
+      cursor: default !important;
+    }
+
     /* Login modal */
     .modal-backdrop {
       position: fixed;
@@ -196,16 +231,6 @@
       font-size: 12px;
       white-space: pre-wrap;
     }
-    .pill-open {
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      font-size:11px;
-      border:1px solid #e0c3c3;
-      background:#fff3f3;
-      color:#7e1e1e;
-      margin-left:8px;
-    }
   </style>
 </head>
 <body>
@@ -213,7 +238,7 @@
   <div class="topbar">
     <div>
       <h1>Админ-панель</h1>
-      <div class="muted">UTC хранение; отображение — локально (Europe/Warsaw).</div>
+      <div class="muted">Хранение в UTC; отображение — локально (Europe/Warsaw).</div>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <div class="status-pill" title="Состояние авторизации и API">
@@ -229,8 +254,10 @@
     <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
     <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
     <button class="tab-btn" onclick="openTab('chartTab')">График</button>
+    <button class="tab-btn" onclick="openTab('scheduleTab')">График смен</button>
   </div>
 
+  <!-- ================= EMPLOYEES ================= -->
   <div id="employees" class="tab-content active">
     <div class="row">
       <div class="col">
@@ -238,6 +265,14 @@
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div style="font-weight:800;">Сотрудники</div>
             <button class="btn secondary" onclick="loadEmployees()">Обновить</button>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <input id="empSearch" placeholder="Поиск: ID, ФИО, NFC, должность…" style="flex:1; min-width:240px;" oninput="applyEmployeeFilter()" />
+            <button class="btn secondary" onclick="clearEmployeeSearch()">Сброс</button>
+          </div>
+          <div class="muted" style="margin-top:6px;">
+            Поиск фильтрует таблицу + списки выбора сотрудника (статистика/график смен).
           </div>
         </div>
 
@@ -254,14 +289,17 @@
           <div style="font-weight:800; margin-bottom:8px;">Создать / редактировать</div>
 
           <input type="hidden" id="empId" />
+
           <label>ФИО</label>
           <input id="fullName" />
+
           <label>NFC UID</label>
           <input id="nfcUid" />
+
           <div class="grid2">
             <div>
               <label>Должность</label>
-              <input id="position" />
+              <select id="position"></select>
             </div>
             <div>
               <label style="margin-top: 10px;">
@@ -270,8 +308,18 @@
               </label>
             </div>
           </div>
+
           <label>Комментарий</label>
           <textarea id="comment"></textarea>
+
+          <label style="margin-top: 12px;">
+            <input type="checkbox" id="editMode" />
+            Режим редактирования (с подтверждением)
+          </label>
+          <div class="muted" style="margin-top:6px;">
+            OFF → “Сохранить” всегда создаёт нового сотрудника.<br>
+            ON → можно менять выбранного сотрудника (обязательно спросит подтверждение).
+          </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
             <button class="btn" onclick="saveEmployee()">Сохранить</button>
@@ -282,6 +330,7 @@
     </div>
   </div>
 
+  <!-- ================= STATS ================= -->
   <div id="stats" class="tab-content">
     <div class="row">
       <div class="col">
@@ -308,7 +357,8 @@
           <div style="font-weight:800; margin-bottom:8px;">События (IN/OUT)</div>
           <table id="eventsTable">
             <thead>
-              <tr><th>ID</th><th>Dir</th><th>UTC</th><th>Local</th><th>Terminal</th></tr>
+              <!-- УБРАЛ UTC -->
+              <tr><th>ID</th><th>Dir</th><th>Local</th><th>Terminal</th></tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -327,6 +377,7 @@
     </div>
   </div>
 
+  <!-- ================= CHART ================= -->
   <div id="chartTab" class="tab-content">
     <div class="box">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -340,6 +391,78 @@
     </div>
   </div>
 
+  <!-- ================= SCHEDULE ================= -->
+  <div id="scheduleTab" class="tab-content">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="font-weight:800;">График смен</div>
+
+          <div class="grid2">
+            <div>
+              <label>Режим</label>
+              <select id="schedMode" onchange="onScheduleModeChange()">
+                <option value="all">Все сотрудники</option>
+                <option value="single">Один сотрудник (матрица)</option>
+              </select>
+            </div>
+            <div>
+              <label>Сотрудник</label>
+              <select id="schedEmp"></select>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label>from_date</label>
+              <input id="schedFrom" type="date" />
+            </div>
+            <div>
+              <label>to_date</label>
+              <input id="schedTo" type="date" />
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" onclick="loadSchedule()">Показать</button>
+            <button class="btn secondary" onclick="openSchedulePdf()">PDF</button>
+          </div>
+
+          <div class="info" style="margin-top:12px;">
+            Редактирование: включи режим “Один сотрудник” и кликни ячейку → введи <b>07:00-19:00</b> или код (<b>В</b>, <b>Відр.</b>). Пусто = удалить.
+          </div>
+        </div>
+
+        <!-- Wide table (all employees) -->
+        <div class="box" id="scheduleWideBox">
+          <div style="font-weight:800; margin-bottom:8px;">Табель (все сотрудники)</div>
+          <div class="sched-wrap">
+            <table id="scheduleWideTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Matrix (single employee) -->
+        <div class="box" id="scheduleMatrixBox" style="display:none;">
+          <div style="font-weight:800; margin-bottom:8px;">
+            Матрица смен (7×4 + остаток)
+            <span class="muted" id="matrixHint" style="margin-left:8px;"></span>
+          </div>
+          <div class="sched-wrap">
+            <table id="scheduleMatrix">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOGIN ================= -->
   <div id="loginBackdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
@@ -355,7 +478,7 @@
 
         <div id="loginError" class="error"></div>
         <div class="info">
-          Требуется для эндпоинтов stats (они защищены require_admin).
+          Требуется для защищённых эндпоинтов (require_admin).
           После входа токен сохраняется в localStorage и подставляется в Authorization заголовок.
         </div>
       </div>
@@ -372,6 +495,17 @@
 
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput   = document.getElementById("toDate");
+
+  // ===== positions list (редактируй под себя) =====
+  const POSITIONS = [
+    "прибиральник службових приміщень",
+    "кухар-універсал",
+    "продавець-консультант",
+    "приймальник складу",
+    "вантажник",
+    "керуючий магазином",
+    "заступник керуючого",
+  ];
 
   function setStatus(ok, text) {
     const dot = document.getElementById("statusDot");
@@ -440,9 +574,7 @@
       const payload = await res.json().catch(async () => await res.text());
       const token = extractToken(payload);
 
-      if (!token) {
-        throw new Error("Логин успешен, но токен не найден в ответе /api/login.");
-      }
+      if (!token) throw new Error("Логин успешен, но токен не найден в ответе /api/login.");
 
       setToken(token);
       closeLogin();
@@ -466,7 +598,6 @@
       setStatus(false, "401: требуется вход");
       openLogin();
     }
-
     return res;
   }
 
@@ -495,6 +626,85 @@
     return text;
   }
 
+  function fmtTime(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+
+  // ====== Employee search/filter/cache ======
+  let _employeesCache = [];
+
+  function clearEmployeeSearch() {
+    const inp = document.getElementById("empSearch");
+    if (inp) inp.value = "";
+    applyEmployeeFilter();
+  }
+
+  function applyEmployeeFilter() {
+    const inp = document.getElementById("empSearch");
+    const q = (inp?.value || "").trim().toLowerCase();
+
+    const filtered = !q ? _employeesCache : _employeesCache.filter(e => {
+      const hay = [
+        e.id,
+        e.full_name,
+        e.nfc_uid,
+        e.position,
+        e.comment
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+
+    renderEmployeesTableAndSelects(filtered);
+  }
+
+  function initPositionSelect() {
+    const sel = document.getElementById("position");
+    sel.innerHTML = `<option value="">— выбери должность —</option>` +
+      POSITIONS.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function renderEmployeesTableAndSelects(list) {
+    const tbody = document.querySelector("#empTable tbody");
+    tbody.innerHTML = "";
+    list.forEach(emp => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
+      tr.onclick = () => loadEmployee(emp.id);
+      tbody.appendChild(tr);
+    });
+
+    const sel = document.getElementById("empSelect");
+    sel.innerHTML = "";
+    list.forEach(emp => {
+      const opt = document.createElement("option");
+      opt.value = emp.id;
+      opt.textContent = `${emp.id} — ${emp.full_name}`;
+      sel.appendChild(opt);
+    });
+
+    const schedEmp = document.getElementById("schedEmp");
+    const keep = schedEmp.value;
+    schedEmp.innerHTML = `<option value="">— выбери —</option>`;
+    list.forEach(emp => {
+      const opt = document.createElement("option");
+      opt.value = emp.id;
+      opt.textContent = `${emp.id} — ${emp.full_name}`;
+      schedEmp.appendChild(opt);
+    });
+    if (keep) schedEmp.value = keep;
+  }
+
   async function loadEmployees() {
     const res = await apiFetch(`/employees/`);
     if (!res.ok) {
@@ -502,25 +712,8 @@
       throw new Error(`employees HTTP ${res.status}\n${fmtJsonError(txt)}`);
     }
     const data = await res.json();
-
-    const tbody = document.querySelector("#empTable tbody");
-    tbody.innerHTML = "";
-
-    const sel = document.getElementById("empSelect");
-    sel.innerHTML = "";
-
-    data.forEach(emp => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
-      tr.onclick = () => loadEmployee(emp.id);
-      tbody.appendChild(tr);
-
-      const opt = document.createElement("option");
-      opt.value = emp.id;
-      opt.textContent = `${emp.id} — ${emp.full_name}`;
-      sel.appendChild(opt);
-    });
-
+    _employeesCache = data;
+    applyEmployeeFilter();
     setStatus(!!getToken(), getToken() ? "Авторизован" : "Не авторизован");
   }
 
@@ -539,41 +732,94 @@
     isActive.checked = !!emp.is_active;
   }
 
+  function isEditModeOn() {
+    return !!document.getElementById("editMode")?.checked;
+  }
+
   async function saveEmployee() {
-    const id = empId.value;
+    const id = (empId.value || "").trim();
+
     const payload = {
-      full_name: fullName.value || undefined,
-      nfc_uid: nfcUid.value || undefined,
-      position: position.value || undefined,
-      comment: comment.value || undefined,
+      full_name: (fullName.value || "").trim() || undefined,
+      nfc_uid: (nfcUid.value || "").trim() || undefined,
+      position: (position.value || "").trim() || undefined,
+      comment: (comment.value || "").trim() || undefined,
       is_active: isActive.checked
     };
 
-    let res;
-    if (id) {
-      res = await apiFetch(`/employees/${id}`, {
-        method: "PATCH",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      });
-    } else {
-      res = await apiFetch(`/employees/`, {
+    if (!payload.full_name || !payload.nfc_uid) {
+      alert("ФИО и NFC UID обязательны.");
+      return;
+    }
+
+    // Edit mode OFF => всегда CREATE
+    if (!isEditModeOn()) {
+      if (!confirm(`Создать нового сотрудника?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
+
+      const res = await apiFetch(`/employees/`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload)
       });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`create employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      }
+
+      clearForm(true);
+      await loadEmployees();
+      return;
     }
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`save employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
-    }
+    // Edit mode ON
+    if (id) {
+      if (!confirm(`Точно обновить сотрудника #${id}?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
 
-    clearForm();
-    await loadEmployees();
+      const res = await apiFetch(`/employees/${id}`, {
+        method: "PATCH",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`update employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      }
+
+      await loadEmployees();
+      return;
+    } else {
+      if (!confirm(`Создать сотрудника?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
+
+      const res = await apiFetch(`/employees/`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`create employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      }
+
+      clearForm(true);
+      await loadEmployees();
+    }
   }
 
-  function clearForm() {
+  function clearForm(force = false) {
+    const hasData =
+      (fullName.value || "").trim() ||
+      (nfcUid.value || "").trim() ||
+      (position.value || "").trim() ||
+      (comment.value || "").trim() ||
+      (empId.value || "").trim();
+
+    if (!force && hasData) {
+      if (!confirm("Очистить форму? Несохранённые изменения будут потеряны.")) return;
+    }
+
     empId.value = "";
     fullName.value = "";
     nfcUid.value = "";
@@ -582,63 +828,7 @@
     isActive.checked = true;
   }
 
-  function fmtTime(ts) {
-    if (!ts) return "";
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  }
-  function buildShiftsFromEvents(events) {
-    // events: [{direction, ts_local, ...}] уже отсортированы по ts в API
-    // строим интервалы IN->OUT, группируем по local date of IN
-    const shifts = [];
-    let openIn = null;
-
-    for (const e of events) {
-      const dir = String(e.direction || "").toUpperCase();
-      if (dir === "IN") {
-        openIn = e;
-      } else if (dir === "OUT") {
-        if (openIn) {
-          shifts.push({ in: openIn, out: e });
-          openIn = null;
-        }
-      }
-    }
-
-    // незакрытая смена
-    if (openIn) {
-      shifts.push({ in: openIn, out: null });
-    }
-
-    // преобразуем в строки таблицы
-    return shifts.map(s => {
-      const inLocal = s.in?.ts_local ? new Date(s.in.ts_local) : null;
-      const outLocal = s.out?.ts_local ? new Date(s.out.ts_local) : null;
-
-      const dateLocal = inLocal
-        ? inLocal.toISOString().slice(0, 10) // YYYY-MM-DD
-        : "";
-
-      let workedSeconds = 0;
-      if (inLocal && outLocal && outLocal >= inLocal) {
-        workedSeconds = Math.floor((outLocal - inLocal) / 1000);
-      }
-
-      const hh = String(Math.floor(workedSeconds / 3600)).padStart(2, "0");
-      const mm = String(Math.floor((workedSeconds % 3600) / 60)).padStart(2, "0");
-      const ss = String(workedSeconds % 60).padStart(2, "0");
-      const workedHMS = `${hh}:${mm}:${ss}`;
-
-      return {
-        date_local: dateLocal,
-        worked_hms: workedHMS,
-        first_in_local: s.in?.ts_local || null,
-        last_out_local: s.out?.ts_local || null,
-        open_shift: !s.out
-      };
-    });
-  }
-
+  // ===== Stats =====
   function renderEvents(events) {
     const tbody = document.querySelector("#eventsTable tbody");
     tbody.innerHTML = "";
@@ -647,7 +837,6 @@
       tr.innerHTML = `
         <td>${e.id}</td>
         <td>${String(e.direction || "").toUpperCase()}</td>
-        <td>${fmtTime(e.ts_utc)}</td>
         <td>${fmtTime(e.ts_local)}</td>
         <td>${e.terminal_id}</td>
       `;
@@ -655,24 +844,20 @@
     });
   }
 
-  function renderDailyFromEvents(events) {
+  function renderDaily(items) {
     const tbody = document.querySelector("#dailyTable tbody");
     tbody.innerHTML = "";
-
-    const rows = buildShiftsFromEvents(events);
-
-    rows.forEach(r => {
+    items.forEach(d => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${r.date_local}</td>
-        <td><strong>${r.worked_hms}</strong></td>
-        <td>${fmtTime(r.first_in_local)}</td>
-        <td>${r.open_shift ? "" : fmtTime(r.last_out_local)}</td>
+        <td>${d.date_local}</td>
+        <td><strong>${d.worked_hms || ""}</strong></td>
+        <td>${fmtTime(d.first_in_local)}</td>
+        <td>${fmtTime(d.last_out_local)}</td>
       `;
       tbody.appendChild(tr);
     });
   }
-
 
   function renderChart(items) {
     if (!window.Chart) return;
@@ -690,6 +875,69 @@
       options: { responsive: true, scales: { y: { beginAtZero: true } } }
     });
   }
+
+  function buildShiftsFromEvents(events) {
+    const shifts = [];
+    let openIn = null;
+
+    for (const e of events) {
+      const dir = String(e.direction || "").toUpperCase();
+      if (dir === "IN") {
+        openIn = e;
+      } else if (dir === "OUT") {
+        if (openIn) {
+          shifts.push({ in: openIn, out: e });
+          openIn = null;
+        }
+      }
+    }
+
+    // незакрытая смена
+    if (openIn) shifts.push({ in: openIn, out: null });
+
+    return shifts.map(s => {
+      const inLocal = s.in?.ts_local ? new Date(s.in.ts_local) : null;
+      const outLocal = s.out?.ts_local ? new Date(s.out.ts_local) : null;
+
+      const dateLocal = inLocal ? inLocal.toISOString().slice(0, 10) : "";
+
+      let workedSeconds = 0;
+      if (inLocal && outLocal && outLocal >= inLocal) {
+        workedSeconds = Math.floor((outLocal - inLocal) / 1000);
+      }
+
+      const hh = String(Math.floor(workedSeconds / 3600)).padStart(2, "0");
+      const mm = String(Math.floor((workedSeconds % 3600) / 60)).padStart(2, "0");
+      const ss = String(workedSeconds % 60).padStart(2, "0");
+
+      return {
+        date_local: dateLocal,
+        worked_hms: `${hh}:${mm}:${ss}`,
+        first_in_local: s.in?.ts_local || null,
+        last_out_local: s.out?.ts_local || null,
+        open_shift: !s.out
+      };
+    });
+  }
+
+  function renderDailyFromEvents(events) {
+    const tbody = document.querySelector("#dailyTable tbody");
+    tbody.innerHTML = "";
+
+    const rows = buildShiftsFromEvents(events);
+
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.date_local}</td>
+        <td><strong>${r.open_shift ? "" : r.worked_hms}</strong></td>
+        <td>${fmtTime(r.first_in_local)}</td>
+        <td>${r.open_shift ? "" : fmtTime(r.last_out_local)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
 
   async function loadStats() {
     const empIdVal = document.getElementById("empSelect").value;
@@ -727,8 +975,297 @@
     setStatus(true, "Авторизован");
   }
 
+  // ===== Schedule =====
+  const schedMode = document.getElementById("schedMode");
+  const schedEmp  = document.getElementById("schedEmp");
+  const schedFrom = document.getElementById("schedFrom");
+  const schedTo   = document.getElementById("schedTo");
+
+  function ymd(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function parseYmd(s) {
+    const [y, m, d] = String(s).split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function eachDay(fromStr, toStr) {
+    const out = [];
+    let cur = parseYmd(fromStr);
+    const end = parseYmd(toStr);
+    while (cur <= end) {
+      out.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  }
+
+  function normalizeScheduleCell(v) {
+    const s = (v || "").trim();
+    if (!s) return { code: null, start_hhmm: null, end_hhmm: null };
+    const m = s.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+    if (m) return { code: null, start_hhmm: m[1], end_hhmm: m[2] };
+    return { code: s, start_hhmm: null, end_hhmm: null };
+  }
+
+  function scheduleCellText(it) {
+    if (!it) return "";
+    if (it.code) return it.code;
+    if (it.start_hhmm || it.end_hhmm) return `${it.start_hhmm || ""}-${it.end_hhmm || ""}`;
+    return "";
+  }
+
+  function onScheduleModeChange() {
+    const mode = schedMode.value;
+    document.getElementById("scheduleWideBox").style.display = (mode === "all") ? "block" : "none";
+    document.getElementById("scheduleMatrixBox").style.display = (mode === "single") ? "block" : "none";
+  }
+
+  async function loadSchedule() {
+    const mode = schedMode.value;
+    const from = schedFrom.value;
+    const to = schedTo.value;
+    const empId = Number(schedEmp.value || 0);
+
+    if (!from) { alert("Укажи from_date"); return; }
+    if (mode === "all" && !to) { alert("Укажи to_date"); return; }
+    if (mode === "single" && !empId) { alert("Выбери сотрудника"); return; }
+
+    // SINGLE: matrix month (7x4 + остаток)
+    if (mode === "single") {
+      const dt = parseYmd(from);
+      const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+      const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+      const q = new URLSearchParams();
+      q.set("date_from", ymd(monthStart));
+      q.set("date_to", ymd(monthEnd));
+      q.set("employee_id", String(empId));
+
+      const res = await apiFetch(`/schedule?${q.toString()}`);
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      }
+      const data = await res.json();
+
+      const map = new Map();
+      for (const it of (data.items || [])) {
+        map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
+      }
+
+      renderScheduleMatrix(empId, monthStart, monthEnd, map);
+      document.getElementById("matrixHint").textContent =
+        `${monthStart.toLocaleString("ru", { month: "long" })} ${monthStart.getFullYear()}`;
+      return;
+    }
+
+    // ALL: wide table
+    const q = new URLSearchParams();
+    q.set("date_from", from);
+    q.set("date_to", to);
+
+    const res = await apiFetch(`/schedule?${q.toString()}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+    const data = await res.json();
+
+    const map = new Map();
+    for (const it of (data.items || [])) {
+      map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
+    }
+
+    // employees list from cache (already filtered by search)
+    const employees = document.getElementById("empSearch")?.value?.trim()
+      ? (function(){
+          const q2 = document.getElementById("empSearch").value.trim().toLowerCase();
+          return _employeesCache.filter(e => {
+            const hay = [e.id,e.full_name,e.nfc_uid,e.position,e.comment].filter(Boolean).join(" ").toLowerCase();
+            return hay.includes(q2);
+          });
+        })()
+      : _employeesCache;
+
+    renderScheduleWideTable(employees, from, to, map);
+  }
+
+  function renderScheduleWideTable(employees, from, to, map) {
+    const days = eachDay(from, to);
+    const thead = document.querySelector("#scheduleWideTable thead");
+    const tbody = document.querySelector("#scheduleWideTable tbody");
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    const trh = document.createElement("tr");
+    trh.innerHTML = `
+      <th style="min-width:40px;">№</th>
+      <th style="min-width:220px;">ПІБ</th>
+      <th style="min-width:160px;">Посада</th>
+      ${days.map(d => `<th style="min-width:60px;">${String(d.getDate()).padStart(2,"0")}</th>`).join("")}
+    `;
+    thead.appendChild(trh);
+
+    employees.forEach((e, idx) => {
+      const tr = document.createElement("tr");
+      const cols = [];
+      cols.push(`<td style="text-align:center;">${idx + 1}</td>`);
+      cols.push(`<td>${e.full_name}</td>`);
+      cols.push(`<td>${e.position || ""}</td>`);
+
+      for (const d of days) {
+        const dayStr = ymd(d);
+        const key = `${e.id}|${dayStr}`;
+        const val = map.get(key) || "";
+        cols.push(`<td>${val}</td>`);
+      }
+
+      tr.innerHTML = cols.join("");
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderScheduleMatrix(employeeId, monthStart, monthEnd, map) {
+    const thead = document.querySelector("#scheduleMatrix thead");
+    const tbody = document.querySelector("#scheduleMatrix tbody");
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    // Header: 7 columns (1..7)
+    const trh = document.createElement("tr");
+    trh.innerHTML = `
+      <th style="min-width:92px;">1</th>
+      <th style="min-width:92px;">2</th>
+      <th style="min-width:92px;">3</th>
+      <th style="min-width:92px;">4</th>
+      <th style="min-width:92px;">5</th>
+      <th style="min-width:92px;">6</th>
+      <th style="min-width:92px;">7</th>
+    `;
+    thead.appendChild(trh);
+
+    const daysInMonth = monthEnd.getDate(); // 28..31
+    const rows = Math.ceil(daysInMonth / 7); // 4 + остаток (1 row), иногда 6 недель не будет, потому что это не календарь, а матрица.
+
+    let day = 1;
+    for (let r = 0; r < rows; r++) {
+      const tr = document.createElement("tr");
+
+      for (let c = 0; c < 7; c++) {
+        if (day <= daysInMonth) {
+          const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+          const dayStr = ymd(d);
+          const key = `${employeeId}|${dayStr}`;
+          const val = map.get(key) || "";
+
+          const td = document.createElement("td");
+          td.className = "matrix-cell";
+          td.dataset.emp = String(employeeId);
+          td.dataset.day = dayStr;
+          td.onclick = () => editScheduleMatrixCell(td);
+
+          td.innerHTML = `
+            <div class="daynum"><span>${day}</span><span class="muted">${dayStr}</span></div>
+            <div class="shifttext">${val || ""}</div>
+          `;
+          tr.appendChild(td);
+          day++;
+        } else {
+          const td = document.createElement("td");
+          td.className = "empty";
+          td.innerHTML = `—`;
+          tr.appendChild(td);
+        }
+      }
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function editScheduleMatrixCell(td) {
+    const empId = Number(td.dataset.emp);
+    const day = td.dataset.day;
+    const cur = td.querySelector(".shifttext")?.textContent?.trim() || "";
+
+    const input = prompt(
+      `Смена на ${day}\n\nВведи:\n- HH:MM-HH:MM (например 07:00-19:00)\n- или код (В, Відр., Н)\n- пусто = удалить`,
+      cur
+    );
+    if (input === null) return;
+
+    const n = normalizeScheduleCell(input);
+
+    const res = await apiFetch(`/schedule/cell`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        employee_id: empId,
+        day: day,
+        start_hhmm: n.start_hhmm,
+        end_hhmm: n.end_hhmm,
+        code: n.code
+      })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      alert(`Ошибка сохранения: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      return;
+    }
+
+    const text = n.code ? n.code : ((n.start_hhmm || n.end_hhmm) ? `${n.start_hhmm || ""}-${n.end_hhmm || ""}` : "");
+    td.querySelector(".shifttext").textContent = text;
+  }
+
+  async function openSchedulePdf() {
+    const mode = schedMode.value;
+    let from = schedFrom.value;
+    let to = schedTo.value;
+
+    if (!from) { alert("Укажи from_date"); return; }
+
+    // SINGLE печатаем месяц
+    if (mode === "single") {
+      const dt = parseYmd(from);
+      const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+      const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+      from = ymd(monthStart);
+      to = ymd(monthEnd);
+    } else {
+      if (!to) { alert("Укажи to_date"); return; }
+    }
+
+    const res = await apiFetch(`/schedule/pdf?date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      alert(`PDF ошибка: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  }
+
+  // ===== init =====
+  function initScheduleDates() {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    schedFrom.value = ymd(first);
+    schedTo.value = ymd(last);
+  }
+
   fromDateInput.value = isoToday();
   toDateInput.value = isoToday();
+
+  initPositionSelect();
+  initScheduleDates();
+  onScheduleModeChange();
 
   (async () => {
     const token = getToken();

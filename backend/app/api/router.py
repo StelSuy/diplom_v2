@@ -1,7 +1,6 @@
 ﻿from fastapi import APIRouter
 
 from app.api.routes import auth, employees, events, schedules, stats, terminals, register
-
 api_router = APIRouter()
 
 # Остальные (как было)
@@ -21,3 +20,6 @@ api_router.include_router(terminals.router, prefix="/terminals", tags=["terminal
 
 # ✅ ДАСТ: /api/terminal/secure-scan (+ /api/terminal/register, /api/terminal/scan если они есть)
 api_router.include_router(terminals.router_public, prefix="/terminal", tags=["terminal-public"])
+
+
+api_router.include_router(schedules.router, prefix="/api")

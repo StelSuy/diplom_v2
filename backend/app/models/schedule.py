@@ -1,5 +1,5 @@
-﻿from sqlalchemy import Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+﻿from sqlalchemy import Column, Integer, String, Date, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 
@@ -7,8 +7,16 @@ from app.db.base import Base
 class Schedule(Base):
     __tablename__ = "schedules"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    day = Column(Date, nullable=False, index=True)
 
-    # РџСЂРёРјРµСЂ: РїР»Р°РЅ РІ РјРёРЅСѓС‚Р°С… РЅР° РґРµРЅСЊ/РЅРµРґРµР»СЋ (РїРѕС‚РѕРј СѓС‚РѕС‡РЅРёРј РјРѕРґРµР»СЊ)
-    planned_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    start_hhmm = Column(String, nullable=True)  # "07:00"
+    end_hhmm = Column(String, nullable=True)    # "19:00"
+    code = Column(String, nullable=True)        # "В", "Відр.", etc.
+
+    employee = relationship("Employee")
+
+    __table_args__ = (
+        UniqueConstraint("employee_id", "day", name="uq_schedule_employee_day"),
+    )
