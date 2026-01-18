@@ -1,260 +1,389 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Panel — Time Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Адмін-панель — Тайм-трекер</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #f3f4f5;
-      margin: 0;
+    :root{
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.06);
+      --panel-2: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.60);
+      --muted-2: rgba(255,255,255,0.45);
+      --accent: #4a90e2;
+      --accent-2: #6aa8ff;
+      --ok: #2dcc70;
+      --bad: #ff4d4d;
+      --shadow: 0 12px 30px rgba(0,0,0,0.35);
+      --shadow-soft: 0 8px 20px rgba(0,0,0,0.22);
+      --radius: 16px;
+      --radius-sm: 12px;
+      --radius-xs: 10px;
+      --focus: 0 0 0 3px rgba(74,144,226,0.35);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body{
+      margin:0;
       padding: 20px;
-      color: #333;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 12% -10%, rgba(74,144,226,0.35), transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, rgba(106,168,255,0.18), transparent 60%),
+        radial-gradient(1000px 650px at 60% 120%, rgba(45,204,112,0.10), transparent 60%),
+        linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a1020 100%);
     }
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
+    /* topbar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 14px;
+      flex-wrap:wrap;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 14px;
+      backdrop-filter: blur(10px);
     }
 
-    h1 {
-      margin: 0;
-      font-weight: 500;
-      color: #222;
-      font-size: 22px;
+    h1{
+      margin:0;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: 18px;
+      line-height: 1.2;
     }
 
-    .muted { color: #777; font-size: 12px; }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #fff;
-      border: 1px solid #e5e5e5;
+    .muted{ color: var(--muted); font-size: 12px; }
+    .muted.small{ color: var(--muted-2); font-size: 11px; }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 12px;
       border-radius: 999px;
-      padding: 6px 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
       font-size: 12px;
+      backdrop-filter: blur(8px);
     }
-    .dot {
-      width: 8px; height: 8px; border-radius: 99px;
-      background: #999;
-    }
-    .dot.ok { background: #2d8a4b; }
-    .dot.bad { background: #b43a3a; }
 
-    .btn {
-      cursor: pointer;
-      border: none;
-      background: #999;
-      color: white;
-      padding: 9px 12px;
-      border-radius: 8px;
-      transition: 0.15s;
-      font-weight: 600;
+    .dot{
+      width: 9px; height: 9px; border-radius: 99px;
+      background: rgba(255,255,255,0.35);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.05);
+    }
+    .dot.ok{ background: var(--ok); box-shadow: 0 0 0 4px rgba(45,204,112,0.15); }
+    .dot.bad{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,77,77,0.15); }
+
+    /* buttons */
+    .btn{
+      cursor:pointer;
+      border: 1px solid transparent;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      transition: transform .12s ease, filter .12s ease, box-shadow .12s ease, background .12s ease;
+      font-weight: 800;
       font-size: 13px;
+      box-shadow: 0 10px 20px rgba(74,144,226,0.18);
+      user-select:none;
     }
-    .btn:hover { background: #777; }
-    .btn.secondary {
-      background: #e0e0e0;
-      color: #111;
-      border: 1px solid #d3d3d3;
+    .btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px) scale(0.99); }
+    .btn:focus{ outline:none; box-shadow: var(--focus), 0 10px 22px rgba(74,144,226,0.18); }
+
+    .btn.secondary{
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.18);
     }
-    .btn.secondary:hover { background: #d6d6d6; }
+    .btn.secondary:hover{
+      background: rgba(255,255,255,0.10);
+      filter:none;
+    }
 
     /* Tabs */
-    .tabs { display: flex; gap: 8px; margin: 10px 0 15px; flex-wrap: wrap; }
-    .tab-btn {
-      background: #e0e0e0;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-      font-weight: 600;
-      font-size: 13px;
+    .tabs{
+      display:flex;
+      gap: 10px;
+      margin: 12px 0 16px;
+      flex-wrap: wrap;
     }
-    .tab-btn.active { background: #d0d0d0; color: #000; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .tab-btn{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor:pointer;
+      transition: 0.18s;
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--text);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+      backdrop-filter: blur(8px);
+    }
+    .tab-btn:hover{
+      background: rgba(255,255,255,0.10);
+      transform: translateY(-1px);
+    }
+    .tab-btn.active{
+      background: linear-gradient(180deg, rgba(74,144,226,0.9), rgba(74,144,226,0.55));
+      border-color: rgba(74,144,226,0.55);
+      box-shadow: 0 12px 24px rgba(74,144,226,0.16);
+    }
+    .tab-content{ display:none; }
+    .tab-content.active{ display:block; }
 
     /* Layout & Components */
-    .row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
-    .col { flex: 1; min-width: 320px; }
+    .row{ display:flex; gap: 18px; align-items:flex-start; flex-wrap:wrap; }
+    .col{ flex:1; min-width: 320px; }
 
-    .box {
-      background: #fff;
+    .box{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 16px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-soft);
       margin-bottom: 16px;
-      border: 1px solid #eee;
+      backdrop-filter: blur(10px);
     }
 
-    table {
+    /* tables */
+    table{
       border-collapse: collapse;
       width: 100%;
-      background: #fff;
-      border-radius: 12px;
+      border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid #eee;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(8px);
     }
-    th, td {
-      border-bottom: 1px solid #eaeaea;
-      padding: 8px 10px;
+
+    th, td{
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 12px;
       text-align: left;
       font-size: 13px;
+      color: var(--text);
     }
-    th { background: #f0f0f0; font-weight: 700; }
-    tr:hover { background: #f8f8f8; cursor: pointer; }
+    th{
+      background: rgba(255,255,255,0.08);
+      font-weight: 900;
+      color: rgba(255,255,255,0.88);
+      letter-spacing: .2px;
+    }
+    tr:hover{ background: rgba(255,255,255,0.05); cursor:pointer; }
 
-    label { display: block; margin-top: 10px; font-size: 13px; color: #555; font-weight: 600; }
-    input, textarea, select {
+    /* forms */
+    label{
+      display:block;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+
+    input, textarea, select{
       width: 100%;
-      padding: 9px 10px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
       margin-top: 6px;
-      background: #fafafa;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(10,16,32,0.55);
+      color: var(--text);
       font-size: 13px;
       outline: none;
+      transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
     }
-    textarea { min-height: 88px; resize: vertical; }
+    input::placeholder{ color: rgba(255,255,255,0.40); }
 
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(74,144,226,0.65);
+      box-shadow: var(--focus);
+      background: rgba(10,16,32,0.72);
+    }
 
-    canvas {
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 12px;
+    textarea{ min-height: 92px; resize: vertical; }
+    select{ appearance: none; background-image:
+      linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.6) 50%),
+      linear-gradient(135deg, rgba(255,255,255,0.6) 50%, transparent 50%);
+      background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 34px;
+    }
+
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    canvas{
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 10px;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(8px);
     }
 
     /* Schedule */
-    .sched-wrap { overflow:auto; }
-    #scheduleWideTable th, #scheduleWideTable td { text-align:center; white-space:nowrap; }
-    #scheduleWideTable td.editable { cursor:pointer; font-weight:700; }
-    #scheduleWideTable td.editable:hover { background:#eef2ff; }
+    .sched-wrap{ overflow:auto; }
+    #scheduleWideTable th, #scheduleWideTable td{ text-align:center; white-space:nowrap; }
+    #scheduleWideTable td.editable{ cursor:pointer; font-weight:900; }
+    #scheduleWideTable td.editable:hover{ background: rgba(74,144,226,0.14); }
 
-    #scheduleMatrix th, #scheduleMatrix td { text-align:center; white-space:nowrap; }
-    #scheduleMatrix td.matrix-cell {
+    #scheduleMatrix th, #scheduleMatrix td{ text-align:center; white-space:nowrap; }
+    #scheduleMatrix td.matrix-cell{
       cursor:pointer;
-      font-weight:700;
+      font-weight:900;
       vertical-align: top;
       min-width: 92px;
-      height: 64px;
+      height: 66px;
+      background: rgba(255,255,255,0.03);
     }
-    #scheduleMatrix td.matrix-cell:hover { background:#eef2ff; }
-    .daynum {
+    #scheduleMatrix td.matrix-cell:hover{ background: rgba(74,144,226,0.14); }
+
+    .daynum{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      font-weight:800;
-      font-size:12px;
-      color:#111;
-      margin-bottom:4px;
+      font-weight: 950;
+      font-size: 12px;
+      color: rgba(255,255,255,0.95);
+      margin-bottom: 4px;
+      gap: 8px;
     }
-    .shifttext {
-      font-weight:700;
-      font-size:12px;
-      color:#222;
+    .shifttext{
+      font-weight: 850;
+      font-size: 12px;
+      color: rgba(255,255,255,0.88);
     }
-    .empty {
-      background:#fafafa;
-      color:#999;
+    .empty{
+      background: rgba(255,255,255,0.02);
+      color: rgba(255,255,255,0.35);
       cursor: default !important;
     }
 
     /* Login modal */
-    .modal-backdrop {
+    .modal-backdrop{
       position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      display: none;
-      align-items: center;
-      justify-content: center;
+      inset:0;
+      background: rgba(0,0,0,0.60);
+      display:none;
+      align-items:center;
+      justify-content:center;
       padding: 20px;
       z-index: 9999;
+      backdrop-filter: blur(6px);
     }
-    .modal-backdrop.show { display: flex; }
-    .modal {
+    .modal-backdrop.show{ display:flex; }
+    .modal{
       width: 100%;
-      max-width: 440px;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      border: 1px solid #eee;
-      overflow: hidden;
+      max-width: 460px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow:hidden;
     }
-    .modal-header {
+    .modal-header{
       padding: 14px 16px;
-      background: #f3f3f3;
-      border-bottom: 1px solid #e7e7e7;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      background: rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
       gap: 12px;
     }
-    .modal-title { font-weight: 800; font-size: 14px; color: #111; }
-    .modal-body { padding: 16px; }
-    .modal-actions {
-      display: flex;
+    .modal-title{
+      font-weight: 950;
+      font-size: 14px;
+      color: rgba(255,255,255,0.92);
+    }
+    .modal-body{ padding: 16px; }
+    .modal-actions{
+      display:flex;
       gap: 10px;
-      justify-content: flex-end;
+      justify-content:flex-end;
       padding: 14px 16px;
-      border-top: 1px solid #eee;
-      background: #fafafa;
+      border-top: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
     }
-    .error {
+
+    .error{
       margin-top: 10px;
-      background: #fff3f3;
-      border: 1px solid #f1c1c1;
-      color: #7e1e1e;
+      background: rgba(255,77,77,0.10);
+      border: 1px solid rgba(255,77,77,0.25);
+      color: rgba(255,225,225,0.95);
       padding: 10px 12px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 12px;
-      display: none;
+      display:none;
       white-space: pre-wrap;
     }
-    .info {
+
+    .info{
       margin-top: 10px;
-      background: #f7f7f7;
-      border: 1px solid #e6e6e6;
-      color: #444;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.78);
       padding: 10px 12px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 12px;
       white-space: pre-wrap;
+    }
+
+    /* small screens */
+    @media (max-width: 520px){
+      body{ padding: 14px; }
+      .grid2{ grid-template-columns: 1fr; }
+      .topbar{ padding: 12px; }
+      .btn{ width: 100%; }
     }
   </style>
 </head>
+
 <body>
 
   <div class="topbar">
     <div>
-      <h1>Админ-панель</h1>
-      <div class="muted">Хранение в UTC; отображение — локально (Europe/Warsaw).</div>
+      <h1>Адмін-панель</h1>
+      <div class="muted">Зберігання в UTC; відображення — локально (Europe/Warsaw).</div>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <div class="status-pill" title="Состояние авторизации и API">
+      <div class="status-pill" title="Стан авторизації та API">
         <span id="statusDot" class="dot"></span>
-        <span id="statusText">Не авторизован</span>
+        <span id="statusText">Не авторизовано</span>
       </div>
-      <button class="btn secondary" onclick="openLogin()">Войти</button>
-      <button class="btn" onclick="logout()">Выйти</button>
+      <button class="btn secondary" onclick="openLogin()">Увійти</button>
+      <button class="btn" onclick="logout()">Вийти</button>
     </div>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="openTab('employees')">Сотрудники</button>
+    <button class="tab-btn active" onclick="openTab('employees')">Співробітники</button>
     <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
-    <button class="tab-btn" onclick="openTab('chartTab')">График</button>
-    <button class="tab-btn" onclick="openTab('scheduleTab')">График смен</button>
+    <button class="tab-btn" onclick="openTab('chartTab')">Графік</button>
+    <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
   </div>
 
   <!-- ================= EMPLOYEES ================= -->
@@ -263,22 +392,22 @@
       <div class="col">
         <div class="box">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-            <div style="font-weight:800;">Сотрудники</div>
-            <button class="btn secondary" onclick="loadEmployees()">Обновить</button>
+            <div style="font-weight:950;">Співробітники</div>
+            <button class="btn secondary" onclick="loadEmployees()">Оновити</button>
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <input id="empSearch" placeholder="Поиск: ID, ФИО, NFC, должность…" style="flex:1; min-width:240px;" oninput="applyEmployeeFilter()" />
-            <button class="btn secondary" onclick="clearEmployeeSearch()">Сброс</button>
+            <input id="empSearch" placeholder="Пошук: ID, ПІБ, NFC, посада…" style="flex:1; min-width:240px;" oninput="applyEmployeeFilter()" />
+            <button class="btn secondary" onclick="clearEmployeeSearch()">Скинути</button>
           </div>
           <div class="muted" style="margin-top:6px;">
-            Поиск фильтрует таблицу + списки выбора сотрудника (статистика/график смен).
+            Пошук фільтрує таблицю + списки вибору співробітника (статистика/графік змін).
           </div>
         </div>
 
         <table id="empTable">
           <thead>
-            <tr><th>ID</th><th>ФИО</th><th>NFC UID</th><th>Активен</th></tr>
+            <tr><th>ID</th><th>ПІБ</th><th>NFC UID</th><th>Активний</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -286,11 +415,11 @@
 
       <div class="col">
         <div class="box">
-          <div style="font-weight:800; margin-bottom:8px;">Создать / редактировать</div>
+          <div style="font-weight:950; margin-bottom:8px;">Створити / редагувати</div>
 
           <input type="hidden" id="empId" />
 
-          <label>ФИО</label>
+          <label>ПІБ</label>
           <input id="fullName" />
 
           <label>NFC UID</label>
@@ -298,32 +427,32 @@
 
           <div class="grid2">
             <div>
-              <label>Должность</label>
+              <label>Посада</label>
               <select id="position"></select>
             </div>
             <div>
               <label style="margin-top: 10px;">
                 <input type="checkbox" id="isActive" checked />
-                Активен
+                Активний
               </label>
             </div>
           </div>
 
-          <label>Комментарий</label>
+          <label>Коментар</label>
           <textarea id="comment"></textarea>
 
           <label style="margin-top: 12px;">
             <input type="checkbox" id="editMode" />
-            Режим редактирования (с подтверждением)
+            Режим редагування (з підтвердженням)
           </label>
           <div class="muted" style="margin-top:6px;">
-            OFF → “Сохранить” всегда создаёт нового сотрудника.<br>
-            ON → можно менять выбранного сотрудника (обязательно спросит подтверждение).
+            OFF → “Зберегти” завжди створює нового співробітника.<br>
+            ON → можна змінювати обраного співробітника (обовʼязково спитає підтвердження).
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <button class="btn" onclick="saveEmployee()">Сохранить</button>
-            <button class="btn secondary" onclick="clearForm()">Очистить</button>
+            <button class="btn" onclick="saveEmployee()">Зберегти</button>
+            <button class="btn secondary" onclick="clearForm()">Очистити</button>
           </div>
         </div>
       </div>
@@ -335,9 +464,9 @@
     <div class="row">
       <div class="col">
         <div class="box">
-          <div style="font-weight:800;">Статистика / события</div>
+          <div style="font-weight:950;">Статистика / події</div>
 
-          <label>Сотрудник</label>
+          <label>Співробітник</label>
           <select id="empSelect"></select>
 
           <div class="grid2">
@@ -346,18 +475,17 @@
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <button class="btn" onclick="loadStats()">Загрузить</button>
-            <button class="btn secondary" onclick="openTab('chartTab');">К графику</button>
+            <button class="btn" onclick="loadStats()">Завантажити</button>
+            <button class="btn secondary" onclick="openTab('chartTab');">До графіка</button>
           </div>
 
           <div class="info" id="statsInfo">Готово.</div>
         </div>
 
         <div class="box">
-          <div style="font-weight:800; margin-bottom:8px;">События (IN/OUT)</div>
+          <div style="font-weight:950; margin-bottom:8px;">Події (IN/OUT)</div>
           <table id="eventsTable">
             <thead>
-              <!-- УБРАЛ UTC -->
               <tr><th>ID</th><th>Dir</th><th>Local</th><th>Terminal</th></tr>
             </thead>
             <tbody></tbody>
@@ -365,10 +493,10 @@
         </div>
 
         <div class="box">
-          <div style="font-weight:800; margin-bottom:8px;">Дни</div>
+          <div style="font-weight:950; margin-bottom:8px;">Дні</div>
           <table id="dailyTable">
             <thead>
-              <tr><th>Date</th><th>Shift worked (HH:MM:SS)</th><th>IN</th><th>OUT</th></tr>
+              <tr><th>Date</th><th>Зміна (HH:MM:SS)</th><th>IN</th><th>OUT</th></tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -381,10 +509,10 @@
   <div id="chartTab" class="tab-content">
     <div class="box">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-        <div style="font-weight:800;">График по отработанным минутам</div>
+        <div style="font-weight:950;">Графік за відпрацьованими хвилинами</div>
         <button class="btn secondary" onclick="openTab('stats')">Назад</button>
       </div>
-      <div class="muted" style="margin-top:6px;">Если Chart.js не загрузится из CDN, график может не отображаться. Это не ломает таблицы.</div>
+      <div class="muted" style="margin-top:6px;">Якщо Chart.js не завантажиться з CDN, графік може не відображатися. Це не ламає таблиці.</div>
       <div style="margin-top:12px;">
         <canvas id="chart" height="340"></canvas>
       </div>
@@ -396,18 +524,18 @@
     <div class="row">
       <div class="col">
         <div class="box">
-          <div style="font-weight:800;">График смен</div>
+          <div style="font-weight:950;">Графік змін</div>
 
           <div class="grid2">
             <div>
               <label>Режим</label>
               <select id="schedMode" onchange="onScheduleModeChange()">
-                <option value="all">Все сотрудники</option>
-                <option value="single">Один сотрудник (матрица)</option>
+                <option value="all">Усі співробітники</option>
+                <option value="single">Один співробітник (матриця)</option>
               </select>
             </div>
             <div>
-              <label>Сотрудник</label>
+              <label>Співробітник</label>
               <select id="schedEmp"></select>
             </div>
           </div>
@@ -424,18 +552,18 @@
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <button class="btn" onclick="loadSchedule()">Показать</button>
+            <button class="btn" onclick="loadSchedule()">Показати</button>
             <button class="btn secondary" onclick="openSchedulePdf()">PDF</button>
           </div>
 
           <div class="info" style="margin-top:12px;">
-            Редактирование: включи режим “Один сотрудник” и кликни ячейку → введи <b>07:00-19:00</b> или код (<b>В</b>, <b>Відр.</b>). Пусто = удалить.
+            Редагування: увімкни режим “Один співробітник” і клікни клітинку → введи <b>07:00-19:00</b> або код (<b>В</b>, <b>Відр.</b>). Порожньо = видалити.
           </div>
         </div>
 
         <!-- Wide table (all employees) -->
         <div class="box" id="scheduleWideBox">
-          <div style="font-weight:800; margin-bottom:8px;">Табель (все сотрудники)</div>
+          <div style="font-weight:950; margin-bottom:8px;">Табель (усі співробітники)</div>
           <div class="sched-wrap">
             <table id="scheduleWideTable">
               <thead></thead>
@@ -446,8 +574,8 @@
 
         <!-- Matrix (single employee) -->
         <div class="box" id="scheduleMatrixBox" style="display:none;">
-          <div style="font-weight:800; margin-bottom:8px;">
-            Матрица смен (7×4 + остаток)
+          <div style="font-weight:950; margin-bottom:8px;">
+            Матриця змін (7×4 + залишок)
             <span class="muted" id="matrixHint" style="margin-left:8px;"></span>
           </div>
           <div class="sched-wrap">
@@ -466,11 +594,11 @@
   <div id="loginBackdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-header">
-        <div class="modal-title">Вход администратора</div>
-        <button class="btn secondary" onclick="closeLogin()">Закрыть</button>
+        <div class="modal-title">Вхід адміністратора</div>
+        <button class="btn secondary" onclick="closeLogin()">Закрити</button>
       </div>
       <div class="modal-body">
-        <label>Логин</label>
+        <label>Логін</label>
         <input id="loginInput" autocomplete="username" />
 
         <label>Пароль</label>
@@ -478,13 +606,13 @@
 
         <div id="loginError" class="error"></div>
         <div class="info">
-          Требуется для защищённых эндпоинтов (require_admin).
-          После входа токен сохраняется в localStorage и подставляется в Authorization заголовок.
+          Потрібно для захищених ендпоінтів (require_admin).
+          Після входу токен зберігається в localStorage і підставляється в заголовок Authorization.
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn secondary" onclick="closeLogin()">Отмена</button>
-        <button class="btn" onclick="login()">Войти</button>
+        <button class="btn secondary" onclick="closeLogin()">Скасувати</button>
+        <button class="btn" onclick="login()">Увійти</button>
       </div>
     </div>
   </div>
@@ -496,7 +624,7 @@
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput   = document.getElementById("toDate");
 
-  // ===== positions list (редактируй под себя) =====
+  // ===== positions list (редагуй під себе) =====
   const POSITIONS = [
     "прибиральник службових приміщень",
     "кухар-універсал",
@@ -531,7 +659,7 @@
 
   function logout() {
     clearToken();
-    setStatus(false, "Не авторизован");
+    setStatus(false, "Не авторизовано");
     openLogin();
   }
 
@@ -554,7 +682,7 @@
     errBox.textContent = "";
 
     if (!loginVal || !passVal) {
-      errBox.textContent = "Заполни логин и пароль.";
+      errBox.textContent = "Заповніть логін і пароль.";
       errBox.style.display = "block";
       return;
     }
@@ -574,16 +702,16 @@
       const payload = await res.json().catch(async () => await res.text());
       const token = extractToken(payload);
 
-      if (!token) throw new Error("Логин успешен, но токен не найден в ответе /api/login.");
+      if (!token) throw new Error("Вхід успішний, але токен не знайдено у відповіді /api/login.");
 
       setToken(token);
       closeLogin();
-      setStatus(true, "Авторизован");
+      setStatus(true, "Авторизовано");
       await loadEmployees();
     } catch (e) {
       errBox.textContent = String(e?.message || e);
       errBox.style.display = "block";
-      setStatus(false, "Ошибка входа");
+      setStatus(false, "Помилка входу");
     }
   }
 
@@ -595,7 +723,7 @@
     const res = await fetch(`${API_ROOT}${path}`, { ...opts, headers });
 
     if (res.status === 401) {
-      setStatus(false, "401: требуется вход");
+      setStatus(false, "401: потрібен вхід");
       openLogin();
     }
     return res;
@@ -661,7 +789,7 @@
 
   function initPositionSelect() {
     const sel = document.getElementById("position");
-    sel.innerHTML = `<option value="">— выбери должность —</option>` +
+    sel.innerHTML = `<option value="">— оберіть посаду —</option>` +
       POSITIONS.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
   }
 
@@ -695,7 +823,7 @@
 
     const schedEmp = document.getElementById("schedEmp");
     const keep = schedEmp.value;
-    schedEmp.innerHTML = `<option value="">— выбери —</option>`;
+    schedEmp.innerHTML = `<option value="">— оберіть —</option>`;
     list.forEach(emp => {
       const opt = document.createElement("option");
       opt.value = emp.id;
@@ -714,7 +842,7 @@
     const data = await res.json();
     _employeesCache = data;
     applyEmployeeFilter();
-    setStatus(!!getToken(), getToken() ? "Авторизован" : "Не авторизован");
+    setStatus(!!getToken(), getToken() ? "Авторизовано" : "Не авторизовано");
   }
 
   async function loadEmployee(id) {
@@ -748,13 +876,13 @@
     };
 
     if (!payload.full_name || !payload.nfc_uid) {
-      alert("ФИО и NFC UID обязательны.");
+      alert("ПІБ та NFC UID обов’язкові.");
       return;
     }
 
-    // Edit mode OFF => всегда CREATE
+    // Edit mode OFF => always CREATE
     if (!isEditModeOn()) {
-      if (!confirm(`Создать нового сотрудника?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
+      if (!confirm(`Створити нового співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
 
       const res = await apiFetch(`/employees/`, {
         method: "POST",
@@ -774,7 +902,7 @@
 
     // Edit mode ON
     if (id) {
-      if (!confirm(`Точно обновить сотрудника #${id}?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
+      if (!confirm(`Точно оновити співробітника #${id}?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
 
       const res = await apiFetch(`/employees/${id}`, {
         method: "PATCH",
@@ -790,7 +918,7 @@
       await loadEmployees();
       return;
     } else {
-      if (!confirm(`Создать сотрудника?\n\nФИО: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nДолжность: ${payload.position || "-"}`)) return;
+      if (!confirm(`Створити співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
 
       const res = await apiFetch(`/employees/`, {
         method: "POST",
@@ -817,7 +945,7 @@
       (empId.value || "").trim();
 
     if (!force && hasData) {
-      if (!confirm("Очистить форму? Несохранённые изменения будут потеряны.")) return;
+      if (!confirm("Очистити форму? Незбережені зміни буде втрачено.")) return;
     }
 
     empId.value = "";
@@ -844,21 +972,6 @@
     });
   }
 
-  function renderDaily(items) {
-    const tbody = document.querySelector("#dailyTable tbody");
-    tbody.innerHTML = "";
-    items.forEach(d => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${d.date_local}</td>
-        <td><strong>${d.worked_hms || ""}</strong></td>
-        <td>${fmtTime(d.first_in_local)}</td>
-        <td>${fmtTime(d.last_out_local)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
   function renderChart(items) {
     if (!window.Chart) return;
     const labels = items.map(x => x.date_local);
@@ -870,7 +983,7 @@
       type: "bar",
       data: {
         labels,
-        datasets: [{ label: "Worked minutes", data: values }]
+        datasets: [{ label: "Відпрацьовано хвилин", data: values }]
       },
       options: { responsive: true, scales: { y: { beginAtZero: true } } }
     });
@@ -892,7 +1005,6 @@
       }
     }
 
-    // незакрытая смена
     if (openIn) shifts.push({ in: openIn, out: null });
 
     return shifts.map(s => {
@@ -938,14 +1050,13 @@
     });
   }
 
-
   async function loadStats() {
     const empIdVal = document.getElementById("empSelect").value;
     const fromDate = fromDateInput.value;
     const toDate = toDateInput.value;
 
     if (!empIdVal || !fromDate || !toDate) {
-      alert("Выбери сотрудника и диапазон дат");
+      alert("Оберіть співробітника та діапазон дат");
       return;
     }
 
@@ -971,8 +1082,7 @@
     renderDailyFromEvents(s1.events);
     renderChart(s2.items);
 
-
-    setStatus(true, "Авторизован");
+    setStatus(true, "Авторизовано");
   }
 
   // ===== Schedule =====
@@ -1031,9 +1141,9 @@
     const to = schedTo.value;
     const empId = Number(schedEmp.value || 0);
 
-    if (!from) { alert("Укажи from_date"); return; }
-    if (mode === "all" && !to) { alert("Укажи to_date"); return; }
-    if (mode === "single" && !empId) { alert("Выбери сотрудника"); return; }
+    if (!from) { alert("Вкажіть from_date"); return; }
+    if (mode === "all" && !to) { alert("Вкажіть to_date"); return; }
+    if (mode === "single" && !empId) { alert("Оберіть співробітника"); return; }
 
     // SINGLE: matrix month (7x4 + остаток)
     if (mode === "single") {
@@ -1059,7 +1169,7 @@
 
       renderScheduleMatrix(empId, monthStart, monthEnd, map);
       document.getElementById("matrixHint").textContent =
-        `${monthStart.toLocaleString("ru", { month: "long" })} ${monthStart.getFullYear()}`;
+        `${monthStart.toLocaleString("uk", { month: "long" })} ${monthStart.getFullYear()}`;
       return;
     }
 
@@ -1080,7 +1190,6 @@
       map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
     }
 
-    // employees list from cache (already filtered by search)
     const employees = document.getElementById("empSearch")?.value?.trim()
       ? (function(){
           const q2 = document.getElementById("empSearch").value.trim().toLowerCase();
@@ -1135,7 +1244,6 @@
     thead.innerHTML = "";
     tbody.innerHTML = "";
 
-    // Header: 7 columns (1..7)
     const trh = document.createElement("tr");
     trh.innerHTML = `
       <th style="min-width:92px;">1</th>
@@ -1148,8 +1256,8 @@
     `;
     thead.appendChild(trh);
 
-    const daysInMonth = monthEnd.getDate(); // 28..31
-    const rows = Math.ceil(daysInMonth / 7); // 4 + остаток (1 row), иногда 6 недель не будет, потому что это не календарь, а матрица.
+    const daysInMonth = monthEnd.getDate();
+    const rows = Math.ceil(daysInMonth / 7);
 
     let day = 1;
     for (let r = 0; r < rows; r++) {
@@ -1169,7 +1277,7 @@
           td.onclick = () => editScheduleMatrixCell(td);
 
           td.innerHTML = `
-            <div class="daynum"><span>${day}</span><span class="muted">${dayStr}</span></div>
+            <div class="daynum"><span>${day}</span><span class="muted small">${dayStr}</span></div>
             <div class="shifttext">${val || ""}</div>
           `;
           tr.appendChild(td);
@@ -1192,7 +1300,7 @@
     const cur = td.querySelector(".shifttext")?.textContent?.trim() || "";
 
     const input = prompt(
-      `Смена на ${day}\n\nВведи:\n- HH:MM-HH:MM (например 07:00-19:00)\n- или код (В, Відр., Н)\n- пусто = удалить`,
+      `Зміна на ${day}\n\nВведіть:\n- HH:MM-HH:MM (наприклад 07:00-19:00)\n- або код (В, Відр., Н)\n- порожньо = видалити`,
       cur
     );
     if (input === null) return;
@@ -1213,7 +1321,7 @@
 
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      alert(`Ошибка сохранения: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      alert(`Помилка збереження: HTTP ${res.status}\n${fmtJsonError(txt)}`);
       return;
     }
 
@@ -1226,9 +1334,8 @@
     let from = schedFrom.value;
     let to = schedTo.value;
 
-    if (!from) { alert("Укажи from_date"); return; }
+    if (!from) { alert("Вкажіть from_date"); return; }
 
-    // SINGLE печатаем месяц
     if (mode === "single") {
       const dt = parseYmd(from);
       const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
@@ -1236,13 +1343,13 @@
       from = ymd(monthStart);
       to = ymd(monthEnd);
     } else {
-      if (!to) { alert("Укажи to_date"); return; }
+      if (!to) { alert("Вкажіть to_date"); return; }
     }
 
     const res = await apiFetch(`/schedule/pdf?date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      alert(`PDF ошибка: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      alert(`Помилка PDF: HTTP ${res.status}\n${fmtJsonError(txt)}`);
       return;
     }
 
@@ -1270,16 +1377,16 @@
   (async () => {
     const token = getToken();
     if (!token) {
-      setStatus(false, "Не авторизован");
+      setStatus(false, "Не авторизовано");
       openLogin();
       return;
     }
     try {
       await loadEmployees();
-      setStatus(true, "Авторизован");
+      setStatus(true, "Авторизовано");
     } catch (e) {
       console.error(e);
-      setStatus(false, "Токен недействителен/ошибка");
+      setStatus(false, "Токен недійсний/помилка");
       openLogin();
     }
   })();

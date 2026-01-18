@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     jwt_alg: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    database_url: str = "sqlite:///./app.db"
+    database_url: str = "mysql+pymysql://user:password@localhost:3306/diploma_db?charset=utf8mb4"
 
     admin_username: str = "admin"
     admin_password: str = "admin123"

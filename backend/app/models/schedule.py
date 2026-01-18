@@ -11,9 +11,10 @@ class Schedule(Base):
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     day = Column(Date, nullable=False, index=True)
 
-    start_hhmm = Column(String, nullable=True)  # "07:00"
-    end_hhmm = Column(String, nullable=True)    # "19:00"
-    code = Column(String, nullable=True)        # "В", "Відр.", etc.
+    # MySQL: VARCHAR потребує довжину
+    start_hhmm = Column(String(5), nullable=True)   # "07:00"
+    end_hhmm = Column(String(5), nullable=True)     # "19:00"
+    code = Column(String(32), nullable=True)        # "В", "Відр.", "Лікарн.", etc.
 
     employee = relationship("Employee")
 

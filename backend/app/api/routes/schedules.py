@@ -28,16 +28,52 @@ def _daterange(d1: date, d2: date):
         cur += timedelta(days=1)
 
 
-def _cell_text(start_hhmm: str | None, end_hhmm: str | None, code: str | None) -> str:
+def _time_cell(start_hhmm: str | None, end_hhmm: str | None, code: str | None, cell_h: float):
+    """
+    Рендерит содержимое ячейки:
+    - если есть code -> показываем code по центру
+    - иначе: сверху start_hhmm (приход), снизу end_hhmm (уход)
+    """
     if code:
-        return code
-    if start_hhmm and end_hhmm:
-        return f"{start_hhmm}-{end_hhmm}"
-    if start_hhmm and not end_hhmm:
-        return f"{start_hhmm}-"
-    if end_hhmm and not start_hhmm:
-        return f"-{end_hhmm}"
-    return ""
+        # Однострочно, по центру
+        t = Table([[code]], rowHeights=[cell_h], colWidths=None)
+        t.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("INNERGRID", (0, 0), (-1, -1), 0, colors.white),
+            ("BOX", (0, 0), (-1, -1), 0, colors.white),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ("LEFTPADDING", (0, 0), (-1, -1), 1),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+        ]))
+        return t
+
+    top = start_hhmm or ""
+    bottom = end_hhmm or ""
+
+    # 2 строки внутри одной ячейки
+    t = Table(
+        [[top], [bottom]],
+        rowHeights=[cell_h / 2.0, cell_h / 2.0],
+        colWidths=None,
+    )
+    t.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+
+        # чтобы выглядело как одна ячейка — без внутренних рамок
+        ("INNERGRID", (0, 0), (-1, -1), 0, colors.white),
+        ("BOX", (0, 0), (-1, -1), 0, colors.white),
+
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+    ]))
+    return t
 
 
 @router.get("", response_model=ScheduleRangeResponse)
@@ -89,19 +125,24 @@ def schedule_pdf(
     employees = employee_crud.get_all(db)
     rows = schedule_crud.get_range(db, date_from=date_from, date_to=date_to, employee_id=None)
 
-    idx: dict[tuple[int, date], str] = {}
+    # индексируем по (employee_id, day) -> (start, end, code)
+    idx: dict[tuple[int, date], tuple[str | None, str | None, str | None]] = {}
     for r in rows:
-        idx[(r.employee_id, r.day)] = _cell_text(r.start_hhmm, r.end_hhmm, r.code)
+        idx[(r.employee_id, r.day)] = (r.start_hhmm, r.end_hhmm, r.code)
 
     days = list(_daterange(date_from, date_to))
 
     header = ["№", "ПІБ", "Посада"] + [d.strftime("%d") for d in days]
-    data = [header]
+    data: list[list[object]] = [header]
+
+    # высота строки (подбирай)
+    CELL_H = 18
 
     for i, e in enumerate(employees, start=1):
-        row = [str(i), e.full_name, (e.position or "")]
+        row: list[object] = [str(i), e.full_name, (e.position or "")]
         for d in days:
-            row.append(idx.get((e.id, d), ""))
+            start_hhmm, end_hhmm, code = idx.get((e.id, d), (None, None, None))
+            row.append(_time_cell(start_hhmm, end_hhmm, code, CELL_H))
         data.append(row)
 
     buf = BytesIO()
@@ -120,16 +161,28 @@ def schedule_pdf(
     story.append(Paragraph(f"Графік змін: {date_from.isoformat()} — {date_to.isoformat()}", styles["Title"]))
     story.append(Spacer(1, 8))
 
-    tbl = Table(data, repeatRows=1)
+    # фиксируем высоты строк, чтобы не было "криво"
+    row_heights = [CELL_H] * len(data)
+    tbl = Table(data, repeatRows=1, rowHeights=row_heights)
+
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
+
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
         ("ALIGN", (0, 0), (0, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+
+        # Паддинги чуть поменьше, чтоб влезало
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
+
     story.append(tbl)
     doc.build(story)
 
