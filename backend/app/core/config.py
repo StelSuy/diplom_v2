@@ -1,8 +1,17 @@
-﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+﻿from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parents[2]  # .../backend
+ENV_FILE = BASE_DIR / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     app_name: str = "TimeTracker API"
     env: str = "dev"
@@ -12,14 +21,13 @@ class Settings(BaseSettings):
     jwt_alg: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    database_url: str = "mysql+pymysql://user:password@localhost:3306/diploma_db?charset=utf8mb4"
+    # ОБОВʼЯЗКОВО
+    database_url: str
 
     admin_username: str = "admin"
     admin_password: str = "admin123"
 
-    # 🔹 ОГРАНИЧЕНИЕ МЕЖДУ СКАНАМИ ТЕРМИНАЛА в секундах
     terminal_scan_cooldown_seconds: int = 5
-
 
 
 settings = Settings()

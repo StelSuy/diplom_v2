@@ -18,6 +18,9 @@ from app.crud import schedule as schedule_crud
 from app.crud import employee as employee_crud
 from app.schemas.schedule import ScheduleCellUpsert, ScheduleRangeResponse, ScheduleCell
 
+from fastapi import APIRouter, Depends, Query, HTTPException
+
+
 router = APIRouter(prefix="/schedule", dependencies=[Depends(require_admin)], tags=["schedule"])
 
 
@@ -99,14 +102,22 @@ def get_schedule(
 
 @router.post("/cell", response_model=ScheduleCell)
 def upsert_schedule_cell(payload: ScheduleCellUpsert, db: Session = Depends(get_db)):
-    row = schedule_crud.upsert_cell(
-        db=db,
-        employee_id=payload.employee_id,
-        day=payload.day,
-        start_hhmm=payload.start_hhmm,
-        end_hhmm=payload.end_hhmm,
-        code=payload.code,
-    )
+    try:
+        row = schedule_crud.upsert_cell(
+            db=db,
+            employee_id=payload.employee_id,
+            day=payload.day,
+            start_hhmm=payload.start_hhmm,
+            end_hhmm=payload.end_hhmm,
+            code=payload.code,
+        )
+    except ValueError as e:
+        # ✅ бізнес-валидація (не той формат коду, дубль, тощо)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # ✅ щоб не було "тихих" 500 без змісту — але краще логувати
+        raise HTTPException(status_code=400, detail=f"Invalid schedule cell: {e}")
+
     return ScheduleCell(
         employee_id=row.employee_id,
         day=row.day,
@@ -114,6 +125,7 @@ def upsert_schedule_cell(payload: ScheduleCellUpsert, db: Session = Depends(get_
         end_hhmm=row.end_hhmm,
         code=row.code,
     )
+
 
 
 @router.get("/pdf")

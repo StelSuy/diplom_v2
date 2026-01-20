@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import require_admin
 from app.db.session import get_db
@@ -23,8 +24,23 @@ from app.crud.event import create_event_from_terminal_scan
 from app.security.verify import verify_signature
 from app.crud import employee as employee_crud
 from app.models.event import Event
+from app.models.terminal import Terminal  # <-- ДОДАНО: для перевірки існування терміналу
 
 log = logging.getLogger("uvicorn.error")
+
+
+# =========================
+# Helpers (без зміни CRUD)
+# =========================
+def _require_terminal_registered(db: Session, terminal_id: int) -> Terminal:
+    """
+    Якщо terminal_id не існує -> 400 "Terminal not registered"
+    Це прибирає 500 від FK/IntegrityError і робить демо стабільним.
+    """
+    term = db.get(Terminal, terminal_id)
+    if term is None:
+        raise HTTPException(status_code=400, detail="Terminal not registered")
+    return term
 
 
 # =========================
@@ -65,7 +81,16 @@ def terminal_register(payload: TerminalRegisterRequest, db: Session = Depends(ge
     Android Registration:
     - scan UID (tag)
     - send {uid, code, first_name, last_name, created_by_terminal_id}
+
+    ДОДАНО:
+    - якщо created_by_terminal_id не існує -> 400 "Terminal not registered"
+    - ловимо IntegrityError -> 400 замість 500
     """
+    # Якщо у схемі поле може називатись інакше — підправ тут
+    terminal_id = getattr(payload, "created_by_terminal_id", None)
+    if terminal_id is not None:
+        _require_terminal_registered(db, int(terminal_id))
+
     try:
         employee = create_employee_from_terminal_registration(db=db, payload=payload)
         return TerminalRegisterResponse(
@@ -75,6 +100,10 @@ def terminal_register(payload: TerminalRegisterRequest, db: Session = Depends(ge
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        # Напр. FK на термінал/унікальності/тощо — не даємо 500
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Terminal not registered")
 
 
 @router_public.post("/scan", response_model=TerminalScanResponse)
@@ -83,7 +112,13 @@ def terminal_scan(payload: TerminalScanRequest, db: Session = Depends(get_db)):
     Android Scan (non-secure):
     - send {uid, terminal_id, direction, ts}
     NOTE: direction может игнорироваться на сервере (см. crud/event.py)
+
+    ДОДАНО:
+    - terminal_id має існувати -> інакше 400 "Terminal not registered"
+    - ловимо IntegrityError -> 400 замість 500
     """
+    _require_terminal_registered(db, payload.terminal_id)
+
     try:
         result = create_event_from_terminal_scan(db=db, payload=payload)
         return TerminalScanResponse(
@@ -93,6 +128,9 @@ def terminal_scan(payload: TerminalScanRequest, db: Session = Depends(get_db)):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Terminal not registered")
 
 
 # =========================
@@ -107,20 +145,27 @@ def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session = Depen
     - terminal sends {employee_uid, terminal_id, direction, ts, challenge_b64, signature_b64}
     - backend verifies signature using employee.public_key_b64
     - then creates event (direction is determined server-side)
+
+    ДОДАНО:
+    - terminal_id має існувати -> 400 "Terminal not registered"
+    - ловимо IntegrityError -> 400 замість 500
     """
     log.error(
         f"SECURE_SCAN payload employee_uid={payload.employee_uid} "
         f"direction={payload.direction} terminal_id={payload.terminal_id} ts={payload.ts}"
     )
 
+    # 0) Перевірка терміналу (щоб не було 500 по FK)
+    _require_terminal_registered(db, payload.terminal_id)
+
     # 1) найти сотрудника по employee_uid
     employee = employee_crud.get_by_uid(db, uid=payload.employee_uid)
     if not employee:
-        log.info(f"SECURE_SCAN payload ...")
+        log.info("SECURE_SCAN employee not found")
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    if not employee.public_key_b64:
-        log.info(f"SECURE_SCAN saved direction=...")
+    if not getattr(employee, "public_key_b64", None):
+        log.info("SECURE_SCAN employee has no public key")
         raise HTTPException(status_code=400, detail="Employee has no public key registered")
 
     # 2) проверить подпись
@@ -162,3 +207,6 @@ def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session = Depen
     except ValueError as e:
         log.error(f"SECURE_SCAN 400: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Terminal not registered")

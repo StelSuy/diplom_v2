@@ -1,21 +1,45 @@
-﻿from fastapi import FastAPI
+﻿import logging
+
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Match
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.core.config import settings
 from app.api.router import api_router
-from app.db.init_db import init_db
+from app.db.session import get_db  # твій dependency (yield Session)
+from app.core.seed import seed_demo_data  # <-- зроби цей файл як я давав раніше
+
+log = logging.getLogger("uvicorn.error")
 
 app = FastAPI(title=settings.app_name)
 
+
+from app.db.session import SessionLocal
+from app.core.seed import seed_demo_data
+
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    try:
+        db = SessionLocal()
+        try:
+            created = seed_demo_data(db)
+            log.info(f"Seed demo data: {created}")
+        finally:
+            db.close()
+    except (OperationalError, ProgrammingError) as e:
+        log.warning(f"Seed skipped (DB not ready): {e}")
+    except Exception as e:
+        log.exception(f"Seed failed but server continues: {e}")
+
+
 
 # ВАЖНО: весь API сидит под /api
 app.include_router(api_router, prefix="/api")
 
 # Админка
 app.mount("/admin", StaticFiles(directory="app/static", html=True), name="admin")
+
 
 @app.get("/health")
 def health():
@@ -32,9 +56,6 @@ def _debug_routes():
     print("=== END ROUTES ===\n")
 
 
-from fastapi import Request
-from starlette.routing import Match
-
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     print(f"\n>>> INCOMING {request.method} {request.url.path}")
@@ -47,7 +68,9 @@ async def log_requests(request: Request, call_next):
     matches = []
     for r in app.router.routes:
         try:
-            m, _ = r.matches({"type": "http", "method": request.method, "path": request.url.path, "headers": []})
+            m, _ = r.matches(
+                {"type": "http", "method": request.method, "path": request.url.path, "headers": []}
+            )
             if m == Match.FULL:
                 matches.append((getattr(r, "path", ""), getattr(r, "methods", None)))
         except Exception:

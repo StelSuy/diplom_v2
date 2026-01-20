@@ -1,4 +1,4 @@
-﻿from app.models.employee import Employee
-from app.models.event import Event
-from app.models.terminal import Terminal
-# + інші моделі, якщо зʼявляться
+﻿from .employee import Employee  # noqa: F401
+from .terminal import Terminal  # noqa: F401
+from .event import Event        # noqa: F401
+from .schedule import Schedule  # noqa: F401
