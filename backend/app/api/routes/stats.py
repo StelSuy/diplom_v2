@@ -1,25 +1,17 @@
 ﻿from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.db.session import get_db
 from app.crud import event as event_crud
-from app.core.time import to_warsaw, local_date_str
-from app.schemas.stats import EmployeeDailyStats, DailyWorkStat
+from app.core.time import to_warsaw
+from app.schemas.stats import EmployeeDailyStats, DailyWorkStat, WorktimeAnomaly, WeekWorkStat, MonthWorkStat
+from app.services.worktime import build_intervals, split_interval_seconds_by_local_day, hms_from_seconds, iter_local_days
 
 router = APIRouter(prefix="/stats", dependencies=[Depends(require_admin)])
-
-
-def _hms_from_seconds(total_seconds: int) -> str:
-    if total_seconds < 0:
-        total_seconds = 0
-    hh = total_seconds // 3600
-    mm = (total_seconds % 3600) // 60
-    ss = total_seconds % 60
-    return f"{hh:02d}:{mm:02d}:{ss:02d}"
 
 
 @router.get("/employee/{employee_id}")
@@ -28,34 +20,41 @@ def employee_stats(employee_id: int, db: Session = Depends(get_db)):
     if not events:
         raise HTTPException(status_code=404, detail="No events for employee")
 
+    intervals, anomalies, has_open = build_intervals(events, auto_close=True, auto_close_at_day_end=True)
+
     total_seconds = 0
-    intervals = []
-    open_in: datetime | None = None
-
-    for ev in events:
-        d = ev.direction.upper()
-        if d == "IN":
-            open_in = ev.ts
-        elif d == "OUT":
-            if open_in is not None and ev.ts >= open_in:
-                dur = (ev.ts - open_in).total_seconds()
-                total_seconds += dur
-
-                intervals.append(
-                    {
-                        "in_utc": open_in.isoformat(),
-                        "out_utc": ev.ts.isoformat(),
-                        "in_local": to_warsaw(open_in).isoformat(),
-                        "out_local": to_warsaw(ev.ts).isoformat(),
-                        "minutes": int(dur // 60),
-                    }
-                )
-                open_in = None
+    intervals_out = []
+    for it in intervals:
+        dur = int((it.out_utc - it.in_utc).total_seconds())
+        if dur < 0:
+            dur = 0
+        total_seconds += dur
+        intervals_out.append(
+            {
+                "in_utc": it.in_utc.isoformat(),
+                "out_utc": it.out_utc.isoformat(),
+                "in_local": to_warsaw(it.in_utc).isoformat(),
+                "out_local": to_warsaw(it.out_utc).isoformat(),
+                "minutes": int(dur // 60),
+                "auto_closed": bool(it.auto_closed),
+            }
+        )
 
     return {
         "employee_id": employee_id,
         "total_minutes": int(total_seconds // 60),
-        "intervals": intervals,
+        "total_hms": hms_from_seconds(int(total_seconds)),
+        "intervals": intervals_out,
+        "has_open_shift": bool(has_open),
+        "anomalies": [
+            {
+                "code": a.code,
+                "ts_utc": a.ts_utc.isoformat() if a.ts_utc else None,
+                "ts_local": to_warsaw(a.ts_utc).isoformat() if a.ts_utc else None,
+                "details": a.details,
+            }
+            for a in anomalies
+        ],
         "events": [
             {
                 "id": ev.id,
@@ -80,93 +79,129 @@ def employee_daily_stats(
     if not events:
         raise HTTPException(status_code=404, detail="No events for employee")
 
-    # daily[day] = worked_seconds, first_in, last_out, open_shift
-    daily: dict[str, dict] = {}
+    intervals, anomalies, has_open = build_intervals(events, auto_close=True, auto_close_at_day_end=True)
 
-    # open_in_by_day нужен, чтобы отметить день как open_shift
-    open_in: datetime | None = None
-    open_in_day_key: str | None = None
+    # --- aggregate per local day ---
+    day_work_seconds: dict[str, int] = {}
+    day_first_in: dict[str, datetime] = {}
+    day_last_out: dict[str, datetime] = {}
+    day_auto_closed: dict[str, bool] = {}
 
-    for ev in events:
-        d = ev.direction.upper()
+    for it in intervals:
+        in_local = to_warsaw(it.in_utc)
+        out_local = to_warsaw(it.out_utc)
 
-        if d == "IN":
-            open_in = ev.ts
-            open_in_day_key = local_date_str(ev.ts)
+        # split seconds by local day (handles cross-midnight)
+        buckets = split_interval_seconds_by_local_day(it.in_utc, it.out_utc)
+        for day_key, sec in buckets.items():
+            day_work_seconds[day_key] = day_work_seconds.get(day_key, 0) + int(sec)
 
-            if open_in_day_key not in daily:
-                daily[open_in_day_key] = {
-                    "worked_seconds": 0,
-                    "first_in": ev.ts,
-                    "last_out": None,
-                    "open_shift": True,
-                }
-            else:
-                if ev.ts < daily[open_in_day_key]["first_in"]:
-                    daily[open_in_day_key]["first_in"] = ev.ts
-                daily[open_in_day_key]["open_shift"] = True
+        # first_in attaches to IN local day
+        in_day = in_local.date().isoformat()
+        if in_day not in day_first_in or it.in_utc < day_first_in[in_day]:
+            day_first_in[in_day] = it.in_utc
 
-        elif d == "OUT":
-            if open_in is not None and ev.ts >= open_in:
-                in_utc = open_in
-                out_utc = ev.ts
-                day_key = local_date_str(in_utc)
+        # last_out attaches to OUT local day
+        out_day = out_local.date().isoformat()
+        if out_day not in day_last_out or it.out_utc > day_last_out[out_day]:
+            day_last_out[out_day] = it.out_utc
 
-                if day_key not in daily:
-                    daily[day_key] = {
-                        "worked_seconds": 0,
-                        "first_in": in_utc,
-                        "last_out": None,
-                        "open_shift": False,
-                    }
+        if it.auto_closed:
+            day_auto_closed[in_day] = True
 
-                daily[day_key]["worked_seconds"] += int((out_utc - in_utc).total_seconds())
+    # anomalies bucketed by local day (for UI diagnostics)
+    anomalies_by_day: dict[str, list[WorktimeAnomaly]] = {}
+    for a in anomalies:
+        if not a.ts_utc:
+            continue
+        day_key = to_warsaw(a.ts_utc).date().isoformat()
+        anomalies_by_day.setdefault(day_key, []).append(
+            WorktimeAnomaly(
+                code=a.code,
+                ts_utc=a.ts_utc.isoformat() if a.ts_utc else None,
+                ts_local=to_warsaw(a.ts_utc).isoformat() if a.ts_utc else None,
+                details=a.details,
+            )
+        )
 
-                # last_out обновляем только реальным OUT
-                if daily[day_key]["last_out"] is None or out_utc > daily[day_key]["last_out"]:
-                    daily[day_key]["last_out"] = out_utc
+    # open_shift is only meaningful for the IN day of the last open interval
+    open_shift_day: str | None = None
+    if has_open:
+        for it in reversed(intervals):
+            if it.auto_closed:
+                open_shift_day = to_warsaw(it.in_utc).date().isoformat()
+                break
 
-                # интервал закрыт
-                daily[day_key]["open_shift"] = False
-
-                open_in = None
-                open_in_day_key = None
-
-    # если цикл закончился, и open_in не закрыт — open_shift уже True в daily[day]
     items: list[DailyWorkStat] = []
+    range_total_seconds = 0
+
+    for d in iter_local_days(from_date, to_date):
+        key = d.isoformat()
+        ws = int(day_work_seconds.get(key, 0))
+        range_total_seconds += ws
+
+        first_in = day_first_in.get(key)
+        last_out = day_last_out.get(key)
+        open_shift = (open_shift_day == key)
+
+        items.append(
+            DailyWorkStat(
+                date_local=key,
+                worked_minutes=int(ws // 60),
+                worked_seconds=ws,
+                worked_hms=hms_from_seconds(ws),
+                first_in_local=to_warsaw(first_in).isoformat() if first_in else None,
+                last_out_local=None if open_shift else (to_warsaw(last_out).isoformat() if last_out else None),
+                open_shift=open_shift,
+                auto_closed=bool(day_auto_closed.get(key, False)),
+                anomalies=anomalies_by_day.get(key, []),
+            )
+        )
+
+    # --- week / month aggregates ---
+    weeks: list[WeekWorkStat] = []
+    months_map: dict[str, int] = {}
+
     cur = from_date
     while cur <= to_date:
-        key = cur.isoformat()
+        week_start = cur - timedelta(days=cur.weekday())  # Monday
+        week_end = week_start + timedelta(days=6)         # Sunday
 
-        if key in daily:
-            first_in = daily[key].get("first_in")
-            last_out = daily[key].get("last_out")
-            open_shift = bool(daily[key].get("open_shift", False))
+        a = max(week_start, from_date)
+        b = min(week_end, to_date)
 
-            worked_seconds = int(daily[key].get("worked_seconds", 0))
-            worked_hms = _hms_from_seconds(worked_seconds)
-            worked_minutes = worked_seconds // 60
+        total = 0
+        t = a
+        while t <= b:
+            total += int(day_work_seconds.get(t.isoformat(), 0))
+            t = date.fromordinal(t.toordinal() + 1)
 
-            items.append(
-                DailyWorkStat(
-                    date_local=key,
-                    worked_minutes=int(worked_minutes),
-                    worked_seconds=worked_seconds,
-                    worked_hms=worked_hms,
-                    first_in_local=to_warsaw(first_in).isoformat() if first_in else None,
-                    # ✅ если open_shift=True → показываем Last OUT пустым
-                    last_out_local=None if open_shift else (to_warsaw(last_out).isoformat() if last_out else None),
-                    open_shift=open_shift,
-                )
+        weeks.append(
+            WeekWorkStat(
+                week_start_local=week_start.isoformat(),
+                week_end_local=week_end.isoformat(),
+                worked_minutes=int(total // 60),
+                worked_hms=hms_from_seconds(int(total)),
             )
-        else:
-            items.append(DailyWorkStat(date_local=key, worked_minutes=0, worked_seconds=0, worked_hms="00:00:00", open_shift=False))
+        )
+        cur = week_end + timedelta(days=1)
 
-        cur = date.fromordinal(cur.toordinal() + 1)
+    for d in iter_local_days(from_date, to_date):
+        ym = d.strftime("%Y-%m")
+        months_map[ym] = months_map.get(ym, 0) + int(day_work_seconds.get(d.isoformat(), 0))
+
+    months = [
+        MonthWorkStat(month=k, worked_minutes=int(v // 60), worked_hms=hms_from_seconds(int(v)))
+        for k, v in sorted(months_map.items())
+    ]
 
     return EmployeeDailyStats(
         employee_id=employee_id,
         from_date=from_date.isoformat(),
         to_date=to_date.isoformat(),
         items=items,
+        total_minutes=int(range_total_seconds // 60),
+        total_hms=hms_from_seconds(int(range_total_seconds)),
+        weeks=weeks,
+        months=months,
     )
