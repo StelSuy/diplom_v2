@@ -7,42 +7,79 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
-    :root{
-      --bg: #0b1220;
-      --panel: rgba(255,255,255,0.06);
-      --panel-2: rgba(255,255,255,0.08);
-      --border: rgba(255,255,255,0.10);
-      --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.60);
-      --muted-2: rgba(255,255,255,0.45);
-      --accent: #4a90e2;
-      --accent-2: #6aa8ff;
-      --ok: #2dcc70;
-      --bad: #ff4d4d;
-      --warn: #ffd166;
-      --shadow: 0 12px 30px rgba(0,0,0,0.35);
-      --shadow-soft: 0 8px 20px rgba(0,0,0,0.22);
-      --radius: 16px;
-      --radius-sm: 12px;
-      --radius-xs: 10px;
-      --focus: 0 0 0 3px rgba(74,144,226,0.35);
-    }
+ /* Темна тема (за замовчуванням) */
+:root {
+  --bg: #0b1220;
+  --panel: rgba(255,255,255,0.06);
+  --panel-2: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.10);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.60);
+  --muted-2: rgba(255,255,255,0.45);
+  --accent: #4a90e2;
+  --accent-2: #6aa8ff;
+  --ok: #2dcc70;
+  --bad: #ff4d4d;
+  --warn: #ffd166;
+  --shadow: 0 12px 30px rgba(0,0,0,0.35);
+  --shadow-soft: 0 8px 20px rgba(0,0,0,0.22);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 10px;
+  --focus: 0 0 0 3px rgba(74,144,226,0.35);
+}
+/* Світла тема */
+[data-theme="light"] {
+  --bg: #f0f2f5;
+  --panel: rgba(255, 255, 255, 0.88);
+  --panel-2: rgba(255, 255, 255, 0.75);
+  --border: rgba(0, 0, 0, 0.10);
+  --text: rgba(20, 20, 20, 0.85);
+  --muted: rgba(0, 0, 0, 0.55);
+  --muted-2: rgba(0, 0, 0, 0.38);
+  --accent: #3a76d2;
+  --accent-2: #5b91e5;
+  --ok: #129f46;
+  --bad: #d93c3c;
+  --warn: #e6a600;
+  --shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 8px 16px rgba(0, 0, 0, 0.05);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 10px;
+  --focus: 0 0 0 3px rgba(58, 117, 210, 0.2);
+}
 
     *{ box-sizing: border-box; }
     html, body { height: 100%; }
 
-    body{
-      margin:0;
-      padding: 20px;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 600px at 12% -10%, rgba(74,144,226,0.35), transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, rgba(106,168,255,0.18), transparent 60%),
-        radial-gradient(1000px 650px at 60% 120%, rgba(45,204,112,0.10), transparent 60%),
-        linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a1020 100%);
-    }
+body{
+  margin:0;
+  padding: 20px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  transition: background 0.3s ease, color 0.3s ease;
+}
 
+/* Градієнти для темної теми */
+
+body:not([data-theme="light"]) {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(74,144,226,0.35), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(106,168,255,0.18), transparent 60%),
+    radial-gradient(1000px 650px at 60% 120%, rgba(45,204,112,0.10), transparent 60%),
+    linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a1020 100%);
+}
+
+[data-theme="light"] body,
+body[data-theme="light"] {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(58,117,210,0.05), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(91,145,229,0.04), transparent 60%),
+    radial-gradient(1000px 650px at 60% 120%, rgba(18,159,70,0.03), transparent 60%),
+    linear-gradient(180deg, #f0f2f5 0%, #eaeef2 55%, #d9dee3 100%);
+}
     .topbar{
       display:flex;
       align-items:center;
@@ -246,14 +283,11 @@
 
     #scheduleMatrix th, #scheduleMatrix td{ text-align:center; white-space:nowrap; }
     #scheduleMatrix td.matrix-cell{
-      cursor:pointer;
-      font-weight:900;
       vertical-align: top;
       min-width: 92px;
       height: 66px;
       background: rgba(255,255,255,0.03);
     }
-    #scheduleMatrix td.matrix-cell:hover{ background: rgba(74,144,226,0.14); }
 
     .daynum{
       display:flex;
@@ -398,30 +432,220 @@
       .topbar{ padding: 12px; }
       .btn{ width: 100%; }
     }
+    
+    /* Plan Builder matrix */
+    #pbMatrix th, #pbMatrix td { text-align:center; white-space:nowrap; }
+    #pbMatrix td.pb-cell{
+      position: relative;
+      cursor: pointer;
+      vertical-align: top;
+      min-width: 98px;
+      height: 74px;
+      background: rgba(255,255,255,0.03);
+    }
+    #pbMatrix td.pb-cell:hover{ background: rgba(74,144,226,0.14); }
+    #pbMatrix td.pb-cell.selected{
+      outline: 2px solid rgba(74,144,226,0.65);
+      box-shadow: 0 0 0 3px rgba(74,144,226,0.20);
+    }
+    .pb-check{
+      position:absolute;
+      top:8px; right:8px;
+      width: 18px; height: 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.25);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+    }
+    .pb-cell.selected .pb-check{
+      background: rgba(74,144,226,0.30);
+      border-color: rgba(74,144,226,0.55);
+    }
+    .pb-shift{
+      font-weight: 900;
+      margin-top: 6px;
+    }
+    .pb-shift.muted0{
+      color: rgba(255,255,255,0.40);
+    }
+    
+    
+   /* Додаткові стилі для світлої теми */
+/* Додаткові стилі для світлої теми */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: rgba(255,255,255,0.90);
+  border-color: rgba(0,0,0,0.10);
+  color: var(--text);
+}
+
+[data-theme="light"] input::placeholder {
+  color: rgba(0,0,0,0.35);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  background: rgba(255,255,255,1);
+  border-color: rgba(59,130,246,0.40);
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(255,255,255,0.75);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .box {
+  background: rgba(255,255,255,0.70);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .modal {
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] table {
+  background: rgba(255,255,255,0.90);
+  border-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] th {
+  background: rgba(0,0,0,0.03);
+  color: var(--text);
+}
+
+[data-theme="light"] td {
+  border-bottom-color: rgba(0,0,0,0.05);
+}
+
+[data-theme="light"] tr:hover {
+  background: rgba(59,130,246,0.04);
+}
+
+[data-theme="light"] canvas {
+  background: rgba(255,255,255,0.90);
+  border-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .tab-btn {
+  background: rgba(255,255,255,0.80);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .tab-btn:hover {
+  background: rgba(255,255,255,0.95);
+}
+
+[data-theme="light"] .tab-btn.active {
+  background: linear-gradient(180deg, #3b82f6, #60a5fa);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+}
+
+[data-theme="light"] .btn.secondary {
+  background: rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .btn.secondary:hover {
+  background: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .status-pill,
+[data-theme="light"] .badge,
+[data-theme="light"] .pill {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+[data-theme="light"] .pb-cell {
+  background: rgba(255,255,255,0.90);
+}
+
+[data-theme="light"] .pb-cell:hover {
+  background: rgba(59,130,246,0.06);
+}
+
+[data-theme="light"] .pb-cell.selected {
+  outline-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+[data-theme="light"] .empty {
+  background: rgba(0,0,0,0.02);
+  color: rgba(0,0,0,0.30);
+}
+
+[data-theme="light"] .error {
+  background: rgba(239,68,68,0.08);
+  border-color: rgba(239,68,68,0.20);
+  color: rgba(127,29,29,0.90);
+}
+
+[data-theme="light"] .info {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.70);
+}
+
+[data-theme="light"] .modal-header {
+  background: rgba(255,255,255,0.50);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .modal-actions {
+  background: rgba(255,255,255,0.40);
+  border-top-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .pb-check {
+  border-color: rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.60);
+}
+
+[data-theme="light"] .pb-cell.selected .pb-check {
+  background: rgba(59,130,246,0.20);
+  border-color: rgba(59,130,246,0.40);
+}
+  
   </style>
 </head>
 
 <body>
 
-  <div class="topbar">
-    <div>
-      <h1>Адмін-панель</h1>
-      <div class="muted">Зберігання в UTC; відображення — локально (Europe/Warsaw).</div>
-    </div>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <div class="status-pill" title="Стан авторизації та API">
-        <span id="statusDot" class="dot"></span>
-        <span id="statusText">Не авторизовано</span>
-      </div>
-      <button class="btn secondary" onclick="openLogin()">Увійти</button>
-      <button class="btn" onclick="logout()">Вийти</button>
-    </div>
+<div class="topbar">
+  <div>
+    <h1>Адмін-панель</h1>
+    <div class="muted">Зберігання в UTC; відображення — локально (Europe/Warsaw).</div>
   </div>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <button class="btn secondary" onclick="toggleTheme()" id="themeToggle" title="Перемикач теми">
+      <span id="themeIcon">🌙</span>
+    </button>
+    <div class="status-pill" title="Стан авторизації та API">
+      <span id="statusDot" class="dot"></span>
+      <span id="statusText">Не авторизовано</span>
+    </div>
+    <button class="btn secondary" onclick="openLogin()">Увійти</button>
+    <button class="btn" onclick="logout()">Вийти</button>
+  </div>
+</div>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="openTab('employees')">Співробітники</button>
     <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
-    <button class="tab-btn" onclick="openTab('chartTab')">Графік</button>
+    <button class="tab-btn" onclick="openTab('planBuilder')">Конструктор графіка</button>
     <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
   </div>
 
@@ -485,8 +709,8 @@
             Режим редагування (з підтвердженням)
           </label>
           <div class="muted" style="margin-top:6px;">
-            OFF → “Зберегти” завжди створює нового співробітника.<br>
-            ON → можна змінювати обраного співробітника (обовʼязково спитає підтвердження).
+            OFF → "Зберегти" завжди створює нового співробітника.<br>
+            ON → можна змінювати обраного співробітника (обов'язково спитає підтвердження).
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
@@ -508,7 +732,6 @@
           <label>Співробітник</label>
           <select id="empSelect"></select>
 
-          <!-- ✅ month picker instead of interval -->
           <div class="grid2">
             <div>
               <label>Місяць</label>
@@ -522,11 +745,23 @@
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
             <button class="btn" onclick="loadStats()">Завантажити</button>
-            <button class="btn secondary" onclick="openTab('chartTab');">До графіка</button>
           </div>
 
           <div class="info" id="statsInfo">Готово.</div>
           <div class="info" id="aggInfo" style="display:none;"></div>
+        </div>
+
+        <!-- Графік Plan vs Fact -->
+        <div class="box">
+          <div style="font-weight:950; font-size:16px; margin-bottom:10px;">
+            Графік План / Факт
+          </div>
+          <div class="info" id="chartInfoStats">
+            Після натискання "Завантажити" графік автоматично будується за вибраний місяць.
+          </div>
+          <div style="margin-top:20px;">
+            <canvas id="chartCanvas" height="140"></canvas>
+          </div>
         </div>
 
         <div class="box">
@@ -553,70 +788,130 @@
             <tbody></tbody>
           </table>
           <div class="muted" style="margin-top:8px;">
-            🟡 open = є IN без OUT • 🔒 auto = автозакриття • ⚠ warn = аномалії • Δ = факт − план
+            🟡 open = є IN без OUT • 🔒 auto = автозакриття • ⚠ warn = аномалія • Δ = факт − план
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ================= CHART ================= -->
-  <div id="chartTab" class="tab-content">
-    <div class="box">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-        <div style="font-weight:950;">Графік: План vs Факт</div>
-        <button class="btn secondary" onclick="openTab('stats')">Назад</button>
-      </div>
-      <div class="muted" style="margin-top:6px;">2 серії: План (хв) та Факт (хв). Можна легко переключити на “дельту”.</div>
-      <div style="margin-top:12px;">
-        <canvas id="chart" height="340"></canvas>
+  <!-- ================= PLAN BUILDER ================= -->
+  <div id="planBuilder" class="tab-content">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="font-weight:950; margin-bottom:12px;">Конструктор графіка (план)</div>
+          
+          <div class="grid2">
+            <div>
+              <label>Співробітник (пошук)</label>
+              <input id="pbSearch" placeholder="Введи ПІБ / ID / NFC..." oninput="pbApplyFilter()" />
+            </div>
+            <div>
+              <label>Список</label>
+              <select id="pbEmpSelect" onchange="pbOnEmpPicked()"></select>
+            </div>
+          </div>
+
+          <div class="grid2" style="margin-top:10px;">
+            <div>
+              <label>Місяць</label>
+              <input id="pbMonth" type="month" onchange="pbLoadMonth()" />
+            </div>
+            <div>
+              <label>Швидкі дії</label>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;">
+                <button class="btn secondary" onclick="pbSelectAll()">Вибрати все</button>
+                <button class="btn secondary" onclick="pbClearSelection()">Очистити вибір</button>
+                <button class="btn secondary" onclick="pbReloadFromServer()">Підтягнути з сервера</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="box" style="margin-top:12px; padding:12px;">
+            <div class="grid2">
+              <div>
+                <label>Час початку (HH:MM)</label>
+                <input id="pbStart" placeholder="07:00" />
+              </div>
+              <div>
+                <label>Час кінця (HH:MM)</label>
+                <input id="pbEnd" placeholder="19:00" />
+              </div>
+            </div>
+
+            <label style="margin-top:10px;">
+              <input type="checkbox" id="pbDayOff" />
+              Позначити як "вихідний" для вибраних днів
+            </label>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+              <button class="btn" onclick="pbApplyToSelected()">Застосувати до вибраних</button>
+              <button class="btn secondary" onclick="pbClearSelectedCells()">Очистити вибрані (видалити план)</button>
+              <button class="btn" onclick="pbSaveSelected()">Зберегти на сервер</button>
+            </div>
+
+            <div class="info" id="pbInfo" style="margin-top:10px;">
+              💡 Порада: при першому завантаженні місяця пусті графіки створюються автоматично.<br>
+              Вибери дні → введи час → "Застосувати" → "Зберегти".
+            </div>
+          </div>
+
+          <div class="sched-wrap" style="margin-top:10px;">
+            <table id="pbMatrix">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ================= SCHEDULE ================= -->
-  <div id="scheduleTab" class="tab-content">
-    <div class="row">
-      <div class="col">
-        <div class="box">
-          <div style="font-weight:950;">Графік змін</div>
+<!-- ================= SCHEDULE (view only) ================= -->
+<div id="scheduleTab" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <div class="box">
+      <div style="font-weight:950;">Графік змін (перегляд)</div>
 
-          <div class="grid2">
+        <div class="grid2">
+          <div>
+            <label>Режим</label>
+            <select id="schedMode" onchange="onScheduleModeChange()">
+              <option value="all">Усі співробітники</option>
+              <option value="single">Один співробітник (матриця)</option>
+            </select>
+          </div>
+          <div>
+            <label>Місяць</label>
+            <input id="schedMonth" type="month" />
+          </div>
+        </div>
+
+        <div id="schedSingleEmployeeBox" style="display:none;">
+          <div class="grid2" style="margin-top:10px;">
             <div>
-              <label>Режим</label>
-              <select id="schedMode" onchange="onScheduleModeChange()">
-                <option value="all">Усі співробітники</option>
-                <option value="single">Один співробітник (матриця)</option>
-              </select>
+              <label>Пошук співробітника</label>
+              <input id="schedSearch" placeholder="Введи ПІБ / ID / NFC..." oninput="schedApplyFilter()" />
             </div>
             <div>
               <label>Співробітник</label>
               <select id="schedEmp"></select>
             </div>
           </div>
-
-          <div class="grid2">
-            <div>
-              <label>from_date</label>
-              <input id="schedFrom" type="date" />
-            </div>
-            <div>
-              <label>to_date</label>
-              <input id="schedTo" type="date" />
-            </div>
-          </div>
-
-          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <button class="btn" onclick="loadSchedule()">Показати</button>
-            <button class="btn secondary" onclick="openSchedulePdf()">PDF</button>
-          </div>
-
-          <div class="info" style="margin-top:12px;">
-            Редагування: увімкни режим “Один співробітник” і клікни клітинку → введи <b>07:00-19:00</b> або код (<b>В</b>, <b>Відр.</b>). Порожньо = видалити.
-          </div>
         </div>
 
-        <div class="box" id="scheduleWideBox">
+        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+          <button class="btn" onclick="loadSchedule()">Показати</button>
+          <button class="btn secondary" onclick="openSchedulePdf()">PDF</button>
+        </div>
+
+        <div class="info" style="margin-top:12px;">
+          Для редагування графіка перейдіть на вкладку "Конструктор графіка".
+        </div>
+      </div>
+<div class="box" id="scheduleWideBox">
           <div style="font-weight:950; margin-bottom:8px;">Табель (усі співробітники)</div>
           <div class="sched-wrap">
             <table id="scheduleWideTable">
@@ -670,16 +965,47 @@
     </div>
   </div>
 
+
 <script>
   const API_ROOT = "/api";
   let chartInstance = null;
+
+  // ===== Система тем =====
+  function getTheme() {
+    return localStorage.getItem('theme') || 'dark';
+  }
+
+  function setTheme(theme) {
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeIcon(theme);
+  }
+
+  function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+      icon.textContent = theme === 'light' ? '🌙' : '☀️';
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = getTheme();
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+  }
+
+  // Ініціалізація теми при завантаженні
+  (function initTheme() {
+    const savedTheme = getTheme();
+    setTheme(savedTheme);
+  })();
 
   // ===== positions list =====
   const POSITIONS = [
     "прибиральник службових приміщень",
     "кухар-універсал",
     "продавець-консультант",
-    "приймальник складу",
+    "прийманьник складу",
     "вантажник",
     "керуючий магазином",
     "заступник керуючого",
@@ -777,76 +1103,79 @@
     return res;
   }
 
-  function openTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-
-    document.querySelectorAll('.tab-btn').forEach(b => {
-      const onclick = b.getAttribute("onclick") || "";
-      if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
-    });
-  }
+    function openTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        const onclick = b.getAttribute("onclick") || "";
+        if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
+      });
+    
+      if (tabId === 'planBuilder') {
+        pbInit();
+      }
+      
+      if (tabId === 'scheduleTab') {
+        schedInitFilters();
+      }
+    }
 
   function fmtJsonError(text) {
     if (!text) return "";
     if (text.length > 1200) return text.slice(0, 1200) + "\n...trimmed...";
     return text;
   }
-    
-    function fmtTime(ts) {
-      if (!ts) return "";
-    
-      // якщо прийшло "HH:MM" або "HH:MM:SS" — просто повертаємо як є (обрізаємо до HH:MM:SS)
-      const s = String(ts).trim();
-      const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
-      if (m) {
-        const hh = m[1], mm = m[2], ss = (m[3] ?? "00");
-        return `${hh}:${mm}:${ss}`;
-      }
-    
-      // ISO / datetime
-      const d = new Date(s);
-      if (Number.isNaN(d.getTime())) return ""; // не валимось
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  
+  function fmtTime(ts) {
+    if (!ts) return "";
+  
+    const s = String(ts).trim();
+    const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      const hh = m[1], mm = m[2], ss = (m[3] ?? "00");
+      return `${hh}:${mm}:${ss}`;
     }
+  
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
 
-    function toLocalMinutesAny(value) {
-      if (!value) return null;
-    
-      const s = String(value).trim();
-    
-      // "HH:MM" або "HH:MM:SS"
-      const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
-      if (m) {
-        const hh = Number(m[1]), mm = Number(m[2]);
-        if (hh > 23 || mm > 59) return null;
-        return hh * 60 + mm;
-      }
-    
-      // ISO / datetime
-      const d = new Date(s);
-      if (Number.isNaN(d.getTime())) return null;
-      return d.getHours() * 60 + d.getMinutes();
-    }
-    
-    function hhmmToMinutes(hhmm) {
-      const s = String(hhmm || "").trim();
-      const m = s.match(/^(\d{2}):(\d{2})$/);
-      if (!m) return null;
+  function toLocalMinutesAny(value) {
+    if (!value) return null;
+  
+    const s = String(value).trim();
+  
+    const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
       const hh = Number(m[1]), mm = Number(m[2]);
       if (hh > 23 || mm > 59) return null;
       return hh * 60 + mm;
     }
-    
-    function clamp0(n){ return Math.max(0, n); }
-    
-    // нічні зміни: якщо факт менший за старт — вважаємо наступною добою
-    function alignActualToShift(actualMin, expectedStartMin) {
-      if (actualMin === null || expectedStartMin === null) return actualMin;
-      if (actualMin < expectedStartMin) return actualMin + 24 * 60;
-      return actualMin;
-    }
+  
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.getHours() * 60 + d.getMinutes();
+  }
+  
+  function hhmmToMinutes(hhmm) {
+    const s = String(hhmm || "").trim();
+    const m = s.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    const hh = Number(m[1]), mm = Number(m[2]);
+    if (hh > 23 || mm > 59) return null;
+    return hh * 60 + mm;
+  }
+  
+  function clamp0(n){ return Math.max(0, n); }
+  
+  function alignActualToShift(actualMin, expectedStartMin) {
+    if (actualMin === null || expectedStartMin === null) return actualMin;
+    if (actualMin < expectedStartMin) return actualMin + 24 * 60;
+    return actualMin;
+  }
 
   function escapeHtml(s) {
     return String(s)
@@ -857,7 +1186,7 @@
       .split("'").join("&#039;");
   }
 
-  // ===== Month helpers (step 2) =====
+  // ===== Month helpers =====
   function ymd(d) {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -868,7 +1197,6 @@
     return new Date(year, month1based, 0).getDate();
   }
   function monthToRange(monthStr) {
-    // monthStr: "YYYY-MM"
     const [y, m] = String(monthStr || "").split("-").map(Number);
     if (!y || !m) return null;
     const from = `${y}-${String(m).padStart(2,"0")}-01`;
@@ -894,37 +1222,44 @@
 
   function pad2(n){ return String(n).padStart(2,"0"); }
 
-function hhmmToMinutes(hhmm) {
-  const m = String(hhmm || "").match(/^(\d{2}):(\d{2})$/);
-  if (!m) return null;
-  const hh = Number(m[1]), mm = Number(m[2]);
-  if (hh > 23 || mm > 59) return null;
-  return hh * 60 + mm;
-}
+  function minutesToHHMM(totalMin) {
+    if (totalMin === null || totalMin === undefined) return "";
+    totalMin = ((totalMin % (24*60)) + (24*60)) % (24*60);
+    const hh = Math.floor(totalMin / 60);
+    const mm = totalMin % 60;
+    return `${pad2(hh)}:${pad2(mm)}`;
+  }
 
-function minutesToHHMM(totalMin) {
-  if (totalMin === null || totalMin === undefined) return "";
-  totalMin = ((totalMin % (24*60)) + (24*60)) % (24*60);
-  const hh = Math.floor(totalMin / 60);
-  const mm = totalMin % 60;
-  return `${pad2(hh)}:${pad2(mm)}`;
-}
+  function toLocalMinutesFromTs(ts) {
+    if (!ts) return null;
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.getHours() * 60 + d.getMinutes();
+  }
 
-function clamp0(n){ return Math.max(0, n); }
+  async function safeJson(res) {
+    const txt = await res.text().catch(() => "");
+    try { return JSON.parse(txt); } catch { return txt || null; }
+  }
 
-function toLocalMinutesFromTs(ts) {
-  if (!ts) return null;
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.getHours() * 60 + d.getMinutes();
-}
-
-// Для нічної зміни: якщо actual < expected_start — додаємо +24h (тобто наступна доба)
-function alignActualToShift(actualMin, expectedStartMin) {
-  if (actualMin === null || expectedStartMin === null) return actualMin;
-  if (actualMin < expectedStartMin) return actualMin + 24*60;
-  return actualMin;
-}
+  function makeEmptyDaily(from, to) {
+    const items = [];
+    const days = eachDay(from, to);
+    for (const d of days) {
+      const day = ymd(d);
+      items.push({
+        date_local: day,
+        worked_minutes: 0,
+        worked_hms: "00:00:00",
+        first_in_local: null,
+        last_out_local: null,
+        open_shift: false,
+        auto_closed: false,
+        anomalies: []
+      });
+    }
+    return { items, total_minutes: 0, total_hms: "00:00:00", weeks: [], months: [] };
+  }
 
   
   // ====== Employee search/filter/cache ======
@@ -1028,7 +1363,7 @@ function alignActualToShift(actualMin, expectedStartMin) {
     };
 
     if (!payload.full_name || !payload.nfc_uid) {
-      alert("ПІБ та NFC UID обов’язкові.");
+      alert("ПІБ та NFC UID обов'язкові.");
       return;
     }
 
@@ -1106,30 +1441,31 @@ function alignActualToShift(actualMin, expectedStartMin) {
     isActive.checked = true;
   }
 
-  // ===== Step 2: Plan vs Fact =====
+  // ===== Schedule helpers =====
 
-  function scheduleCellText(it) {
-    if (!it) return "";
-    if (it.code) return it.code;
-    if (it.start_hhmm || it.end_hhmm) return `${it.start_hhmm || ""}-${it.end_hhmm || ""}`;
-    return "";
-  }
+function scheduleCellText(it) {
+  if (!it) return "";
+  if (it.code) return it.code;
+  
+  // Якщо обидва часи 00:00 - показуємо прочерк
+  if (it.start_hhmm === "00:00" && it.end_hhmm === "00:00") return "—";
+  
+  if (it.start_hhmm || it.end_hhmm) return `${it.start_hhmm || ""}-${it.end_hhmm || ""}`;
+  return "";
+}
 
   function calcExpectedMinutesFromScheduleItem(it) {
-    // Only if shift is time-based. Codes like "В" => no planned minutes.
     if (!it || it.code) return null;
     const a = parseHHMM(it.start_hhmm);
     const b = parseHHMM(it.end_hhmm);
     if (a === null || b === null) return null;
 
-    // allow overnight shifts (e.g. 22:00-06:00)
     let diff = b - a;
     if (diff < 0) diff += 24 * 60;
     return diff;
   }
 
   function buildScheduleMap(schedulePayload) {
-    // Map day -> { text, start_hhmm, end_hhmm, code, expected_minutes }
     const map = new Map();
     const items = (schedulePayload && schedulePayload.items) ? schedulePayload.items : [];
     for (const it of items) {
@@ -1194,281 +1530,175 @@ function alignActualToShift(actualMin, expectedStartMin) {
     `;
   }
 
-function minutesLabel(min) {
-  if (min === null || min === undefined) return "—";
-  if (min === 0) return "—";
-  const sign = min > 0 ? "+" : "−";
-  const a = Math.abs(min);
-  const hh = Math.floor(a / 60);
-  const mm = a % 60;
-  if (hh === 0) return `${sign}${mm} хв`;
-  return `${sign}${hh}г ${String(mm).padStart(2,"0")}хв`;
+  function minutesLabel(min) {
+    if (min === null || min === undefined) return "—";
+    if (min === 0) return "—";
+    const sign = min > 0 ? "+" : "−";
+    const a = Math.abs(min);
+    const hh = Math.floor(a / 60);
+    const mm = a % 60;
+    if (hh === 0) return `${sign}${mm} хв`;
+    return `${sign}${hh}г ${String(mm).padStart(2,"0")}хв`;
+  }
+
+  function pillNeutral(text="—") { return `<span class="pill neutral">${escapeHtml(text)}</span>`; }
+  function pillWarn(text) { return `<span class="pill warn">${escapeHtml(text)}</span>`; }
+  function pillViol(text="Порушення") { return `<span class="pill viol">${escapeHtml(text)}</span>`; }
+  function pillGood(text) { return `<span class="pill good">${escapeHtml(text)}</span>`; }
+  function pillBad(text) { return `<span class="pill bad">${escapeHtml(text)}</span>`; }
+
+  function renderDailyPlanFact(dailyItems, scheduleMap) {
+    const tbody = document.querySelector("#dailyTable tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    (dailyItems || []).forEach(r => {
+      const day = r.date_local || "";
+      const sch = (scheduleMap && scheduleMap.get) ? (scheduleMap.get(day) || null) : null;
+
+      const open = !!r.open_shift;
+      const autoClosed = !!r.auto_closed;
+      const hasWarn = Array.isArray(r.anomalies) && r.anomalies.length > 0;
+
+      const planText = (sch && sch.text) ? sch.text : "";
+      const planMinutes = (sch && sch.expected_minutes !== undefined && sch.expected_minutes !== null)
+        ? sch.expected_minutes
+        : null;
+
+      const planHtml = planText
+        ? `<b>${escapeHtml(planText)}</b>${planMinutes !== null ? ` <span class="muted small">(${planMinutes} хв)</span>` : ""}`
+        : `<span class="muted small">—</span>`;
+
+      const factWorked = (r.worked_minutes !== undefined && r.worked_minutes !== null) ? r.worked_minutes : null;
+
+      const inVal = r.first_in_local || null;
+      const outVal = (!open) ? (r.last_out_local || null) : null;
+
+      const inLabel = inVal ? fmtTime(inVal) : "";
+      const outLabel = outVal ? fmtTime(outVal) : "";
+
+      let factHtml = `<span class="muted small">—</span>`;
+      if (inLabel || outLabel || factWorked !== null) {
+        const parts = [];
+        if (inLabel || outLabel) parts.push(`${inLabel}${outLabel ? " → " + outLabel : ""}`);
+        if (r.worked_hms) parts.push(`<span class="muted small">${escapeHtml(r.worked_hms)}</span>`);
+        factHtml = parts.join(" <span class='muted small'>|</span> ");
+      }
+
+      const badges = []
+        .concat(open ? [`<span class="badge open">open</span>`] : [])
+        .concat(autoClosed ? [`<span class="badge auto">auto</span>`] : [])
+        .concat(hasWarn ? [`<span class="badge warn">warn</span>`] : [])
+        .join("");
+
+      let deltaHtml = `<span class="pill neutral">—</span>`;
+
+      if (!open && planMinutes !== null && factWorked !== null) {
+        const delta = factWorked - planMinutes;
+        if (delta > 0) deltaHtml = `<span class="pill good">+${delta} хв</span>`;
+        else if (delta < 0) deltaHtml = `<span class="pill bad">${delta} хв</span>`;
+        else deltaHtml = `<span class="pill neutral">—</span>`;
+      } else if (planMinutes === null && factWorked !== null && factWorked > 0) {
+        deltaHtml = `<span class="pill good">+${factWorked} хв</span>`;
+      }
+
+      const tr = document.createElement("tr");
+      if (open) tr.classList.add("row-open");
+      if (hasWarn) tr.classList.add("row-warn");
+
+      tr.innerHTML = `
+        <td>${escapeHtml(day)}</td>
+        <td>${planHtml}</td>
+        <td>${factHtml} ${badges}</td>
+        <td>${deltaHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function dateLocalFromTsAny(ts) {
+    if (!ts) return null;
+    const s = String(ts).trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return null;
+    return ymd(d);
+  }
+
+  function mergeDailyWithIntervals(dailyItems, intervals, events) {
+    const out = Array.isArray(dailyItems) ? [...dailyItems] : [];
+    const byDay = new Map(out.map(x => [x.date_local, x]));
+
+    if (Array.isArray(intervals) && intervals.length) {
+      const sumByDay = new Map();
+
+      for (const it of intervals) {
+        const a = it.start_local || it.start || it.ts_start_local || it.ts_start || it.in_ts || it.in || null;
+        const b = it.end_local   || it.end   || it.ts_end_local   || it.ts_end || it.out_ts || it.out || null;
+
+        const day = dateLocalFromTsAny(a) || dateLocalFromTsAny(b);
+        if (!day) continue;
+
+        const da = new Date(a);
+        const db = new Date(b);
+        if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) continue;
+
+        const mins = Math.max(0, Math.round((db - da) / 60000));
+        sumByDay.set(day, (sumByDay.get(day) || 0) + mins);
+      }
+
+      for (const [day, mins] of sumByDay.entries()) {
+        if (!byDay.has(day)) {
+          const obj = {
+            date_local: day,
+            worked_minutes: mins,
+            worked_hms: `${Math.floor(mins/60)}:${String(mins%60).padStart(2,"0")}:00`,
+            first_in_local: null,
+            last_out_local: null,
+            open_shift: false,
+            auto_closed: false,
+            anomalies: ["added_from_intervals"]
+          };
+          byDay.set(day, obj);
+          out.push(obj);
+        } else {
+          const cur = byDay.get(day);
+          if ((cur.worked_minutes ?? null) === null || cur.worked_minutes === 0) {
+            cur.worked_minutes = mins;
+            cur.worked_hms = cur.worked_hms || `${Math.floor(mins/60)}:${String(mins%60).padStart(2,"0")}:00`;
+          }
+        }
+      }
 }
 
-function pillNeutral(text="—") { return `<span class="pill neutral">${escapeHtml(text)}</span>`; }
-function pillWarn(text) { return `<span class="pill warn">${escapeHtml(text)}</span>`; }
-function pillViol(text="Порушення") { return `<span class="pill viol">${escapeHtml(text)}</span>`; }
-function pillGood(text) { return `<span class="pill good">${escapeHtml(text)}</span>`; }
-function pillBad(text) { return `<span class="pill bad">${escapeHtml(text)}</span>`; }
+    if (Array.isArray(events) && events.length) {
+      for (const e of events) {
+        const ts = e.ts_local || e.tsLocal || e.ts_utc || e.tsUtc || e.ts;
+        const day = dateLocalFromTsAny(ts);
+        if (!day) continue;
 
-function renderDailyPlanFact(dailyItems, scheduleMap) {
-  const tbody = document.querySelector("#dailyTable tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-
-  (dailyItems || []).forEach(r => {
-    const day = r.date_local || "";
-    const sch = (scheduleMap && scheduleMap.get) ? (scheduleMap.get(day) || null) : null;
-
-    const open = !!r.open_shift;
-    const autoClosed = !!r.auto_closed;
-    const hasWarn = Array.isArray(r.anomalies) && r.anomalies.length > 0;
-
-    // ===== PLAN =====
-    const planText = (sch && sch.text) ? sch.text : "";
-    const planMinutes = (sch && sch.expected_minutes !== undefined && sch.expected_minutes !== null)
-      ? sch.expected_minutes
-      : null;
-
-    const planHtml = planText
-      ? `<b>${escapeHtml(planText)}</b>${planMinutes !== null ? ` <span class="muted small">(${planMinutes} хв)</span>` : ""}`
-      : `<span class="muted small">—</span>`;
-
-    // ===== FACT =====
-    const factWorked = (r.worked_minutes !== undefined && r.worked_minutes !== null) ? r.worked_minutes : null;
-
-    const inVal = r.first_in_local || null;
-    const outVal = (!open) ? (r.last_out_local || null) : null; // ✅ тут була поломка у попередньому коді
-
-    const inLabel = inVal ? fmtTime(inVal) : "";
-    const outLabel = outVal ? fmtTime(outVal) : "";
-
-    let factHtml = `<span class="muted small">—</span>`;
-    if (inLabel || outLabel || factWorked !== null) {
-      const parts = [];
-      if (inLabel || outLabel) parts.push(`${inLabel}${outLabel ? " → " + outLabel : ""}`);
-      if (r.worked_hms) parts.push(`<span class="muted small">${escapeHtml(r.worked_hms)}</span>`);
-      factHtml = parts.join(" <span class='muted small'>|</span> ");
-    }
-
-    // ===== BADGES =====
-    const badges = []
-      .concat(open ? [`<span class="badge open">open</span>`] : [])
-      .concat(autoClosed ? [`<span class="badge auto">auto</span>`] : [])
-      .concat(hasWarn ? [`<span class="badge warn">warn</span>`] : [])
-      .join("");
-
-    // ===== Δ ONLY (без Late/Early/Ok) =====
-    // - якщо є план і факт (і не open) => Δ = факт - план
-    // - якщо плану нема, але факт > 0 => показуємо +fact (щоб не було пусто)
-    // - якщо 0 => показуємо сіре "—"
-    let deltaHtml = `<span class="pill neutral">—</span>`;
-
-    if (!open && planMinutes !== null && factWorked !== null) {
-      const delta = factWorked - planMinutes;
-      if (delta > 0) deltaHtml = `<span class="pill good">+${delta} хв</span>`;
-      else if (delta < 0) deltaHtml = `<span class="pill bad">${delta} хв</span>`;
-      else deltaHtml = `<span class="pill neutral">—</span>`;
-    } else if (planMinutes === null && factWorked !== null && factWorked > 0) {
-      deltaHtml = `<span class="pill good">+${factWorked} хв</span>`;
-    }
-
-    const tr = document.createElement("tr");
-    if (open) tr.classList.add("row-open");
-    if (hasWarn) tr.classList.add("row-warn");
-
-    tr.innerHTML = `
-      <td>${escapeHtml(day)}</td>
-      <td>${planHtml}</td>
-      <td>${factHtml} ${badges}</td>
-      <td>${deltaHtml}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-
-function dateLocalFromTsAny(ts) {
-  if (!ts) return null;
-  const s = String(ts).trim();
-
-  // якщо просто "YYYY-MM-DD" — повертаємо як є
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return ymd(d);
-}
-
-function mergeDailyWithIntervals(dailyItems, intervals, events) {
-  const out = Array.isArray(dailyItems) ? [...dailyItems] : [];
-  const byDay = new Map(out.map(x => [x.date_local, x]));
-
-  // 1) якщо є intervals — вони найкращі для “факт хвилини”
-  if (Array.isArray(intervals) && intervals.length) {
-    const sumByDay = new Map();
-
-    for (const it of intervals) {
-      // на твоєму бекенді це може бути start/end/ts_start/ts_end — підстраховка
-      const a = it.start_local || it.start || it.ts_start_local || it.ts_start || it.in_ts || it.in || null;
-      const b = it.end_local   || it.end   || it.ts_end_local   || it.ts_end   || it.out_ts || it.out || null;
-
-      const day = dateLocalFromTsAny(a) || dateLocalFromTsAny(b);
-      if (!day) continue;
-
-      const da = new Date(a);
-      const db = new Date(b);
-      if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) continue;
-
-      const mins = Math.max(0, Math.round((db - da) / 60000));
-      sumByDay.set(day, (sumByDay.get(day) || 0) + mins);
-    }
-
-    for (const [day, mins] of sumByDay.entries()) {
-      if (!byDay.has(day)) {
-        const obj = {
-          date_local: day,
-          worked_minutes: mins,
-          worked_hms: `${Math.floor(mins/60)}:${String(mins%60).padStart(2,"0")}:00`,
-          first_in_local: null,
-          last_out_local: null,
-          open_shift: false,
-          auto_closed: false,
-          anomalies: ["added_from_intervals"]
-        };
-        byDay.set(day, obj);
-        out.push(obj);
-      } else {
-        // якщо daily є, але worked_minutes = 0/ null — можна “підперти” інтервалами
-        const cur = byDay.get(day);
-        if ((cur.worked_minutes ?? null) === null || cur.worked_minutes === 0) {
-          cur.worked_minutes = mins;
-          cur.worked_hms = cur.worked_hms || `${Math.floor(mins/60)}:${String(mins%60).padStart(2,"0")}:00`;
+        if (!byDay.has(day)) {
+          const obj = {
+            date_local: day,
+            worked_minutes: null,
+            worked_hms: "",
+            first_in_local: null,
+            last_out_local: null,
+            open_shift: false,
+            auto_closed: false,
+            anomalies: ["has_scans_no_daily"]
+          };
+          byDay.set(day, obj);
+          out.push(obj);
         }
       }
     }
+
+    out.sort((a,b) => String(a.date_local).localeCompare(String(b.date_local)));
+    return out;
   }
-
-  // 2) якщо intervals нема — але events є, додаємо “порожній факт” (щоб день не пропав)
-  if (Array.isArray(events) && events.length) {
-    for (const e of events) {
-      const ts = e.ts_local || e.tsLocal || e.ts_utc || e.tsUtc || e.ts;
-      const day = dateLocalFromTsAny(ts);
-      if (!day) continue;
-
-      if (!byDay.has(day)) {
-        const obj = {
-          date_local: day,
-          worked_minutes: null,     // не вигадуємо, якщо не можемо порахувати
-          worked_hms: "",
-          first_in_local: null,
-          last_out_local: null,
-          open_shift: false,
-          auto_closed: false,
-          anomalies: ["has_scans_no_daily"]
-        };
-        byDay.set(day, obj);
-        out.push(obj);
-      }
-    }
-  }
-
-  // сортування по даті
-  out.sort((a,b) => String(a.date_local).localeCompare(String(b.date_local)));
-  return out;
-}
-  
-
-  function renderChartPlanVsFact(dailyItems, scheduleMap) {
-    if (!window.Chart) return;
-
-    const labels = (dailyItems || []).map(x => x.date_local);
-    const planned = (dailyItems || []).map(x => {
-      const sch = scheduleMap.get(x.date_local);
-    return (sch && sch.expected_minutes !== null) ? sch.expected_minutes : null;
-    });
-    const fact = (dailyItems || []).map(x => {
-      const v = (x.worked_minutes ?? null);
-      return (v === 0 ? null : v);
-    });
-
-
-    const ctx = document.getElementById("chart");
-    if (chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [
-          { label: "План (хв)", data: planned },
-          { label: "Факт (хв)", data: fact }
-        ]
-      },
-      options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-  }
-
-  async function loadStats() {
-    const empIdVal = document.getElementById("empSelect").value;
-    const monthVal = document.getElementById("monthPick").value;
-
-    if (!empIdVal) { alert("Оберіть співробітника"); return; }
-    if (!monthVal) { alert("Оберіть місяць"); return; }
-
-    const range = monthToRange(monthVal);
-    if (!range) { alert("Невірний місяць"); return; }
-
-    document.getElementById("rangePreview").value = `${range.from} → ${range.to}`;
-
-    // 1) events overview (for table) — keep as before
-    const res1 = await apiFetch(`/stats/employee/${empIdVal}`);
-    if (!res1.ok) {
-      const txt = await res1.text().catch(() => "");
-      throw new Error(`stats employee HTTP ${res1.status}\n${fmtJsonError(txt)}`);
-    }
-    const s1 = await res1.json();
-    renderEvents(s1.events || []);
-
-    // 2) daily truth for month
-    const res2 = await apiFetch(`/stats/employee/${empIdVal}/daily?from_date=${encodeURIComponent(range.from)}&to_date=${encodeURIComponent(range.to)}`);
-    if (!res2.ok) {
-      const txt = await res2.text().catch(() => "");
-      throw new Error(`stats daily HTTP ${res2.status}\n${fmtJsonError(txt)}`);
-    }
-    const s2 = await res2.json();
-
-    // 3) schedule for same month (plan)
-    const q = new URLSearchParams();
-    q.set("date_from", range.from);
-    q.set("date_to", range.to);
-    q.set("employee_id", String(empIdVal));
-
-    const res3 = await apiFetch(`/schedule?${q.toString()}`);
-    if (!res3.ok) {
-      const txt = await res3.text().catch(() => "");
-      throw new Error(`schedule HTTP ${res3.status}\n${fmtJsonError(txt)}`);
-    }
-    const sched = await res3.json();
-    const scheduleMap = buildScheduleMap(sched);
-
-    // UI
-    document.getElementById("statsInfo").textContent =
-      `Події: ${(s1.events || []).length} | Інтервали: ${(s1.intervals || []).length} | Усього: ${s2.total_hms || (s2.total_minutes + " хв")} | open_shift: ${!!s1.has_open_shift}`;
-
-        const mergedItems = mergeDailyWithIntervals(s2.items || [], (s1.intervals || []), (s1.events || []));
-        renderAggregates(s2);
-        renderDailyPlanFact(mergedItems, scheduleMap);
-        renderChartPlanVsFact(mergedItems, scheduleMap);
-
-
-    setStatus(true, "Авторизовано");
-  }
-
-  // ===== Schedule (unchanged logic from your previous) =====
-  const schedMode = document.getElementById("schedMode");
-  const schedEmp  = document.getElementById("schedEmp");
-  const schedFrom = document.getElementById("schedFrom");
-  const schedTo   = document.getElementById("schedTo");
 
   function parseYmd(s) {
     const parts = String(s || "").split("-").map(Number);
@@ -1488,6 +1718,249 @@ function mergeDailyWithIntervals(dailyItems, intervals, events) {
     return out;
   }
 
+  function mergeDailyWithAllDays(from, to, dailyItems) {
+    const byDay = new Map((dailyItems || []).map(x => [x.date_local, x]));
+    const out = [];
+    for (const d of eachDay(from, to)) {
+      const day = ymd(d);
+      const existing = byDay.get(day);
+      out.push(existing || {
+        date_local: day,
+        worked_minutes: 0,
+        worked_hms: "00:00:00",
+        first_in_local: null,
+        last_out_local: null,
+        open_shift: false,
+        auto_closed: false,
+        anomalies: []
+      });
+    }
+    return out;
+  }
+
+  async function loadStats() {
+    const empIdVal = document.getElementById("empSelect").value;
+    const monthVal = document.getElementById("monthPick").value;
+
+    if (!empIdVal) {
+      alert("Оберіть співробітника");
+      return;
+    }
+    if (!monthVal) {
+      alert("Оберіть місяць");
+      return;
+    }
+
+    const range = monthToRange(monthVal);
+    if (!range) {
+      alert("Невірний місяць");
+      return;
+    }
+
+    document.getElementById("rangePreview").value = `${range.from} → ${range.to}`;
+    document.getElementById("statsInfo").textContent = "Завантаження…";
+
+    try {
+      // 1) EVENTS + INTERVALS
+      let s1 = { events: [], intervals: [], has_open_shift: false };
+
+      const res1 = await apiFetch(`/stats/employee/${empIdVal}`);
+      if (res1.ok) {
+        s1 = await res1.json();
+      } else if (res1.status === 404) {
+        s1 = { events: [], intervals: [], has_open_shift: false };
+      } else {
+        const txt = await res1.text().catch(() => "");
+        throw new Error(`stats employee HTTP ${res1.status}\n${fmtJsonError(txt)}`);
+      }
+
+      renderEvents(s1.events || []);
+
+      // 2) DAILY по місяцю
+      let s2 = null;
+      const res2 = await apiFetch(
+        `/stats/employee/${empIdVal}/daily?from_date=${encodeURIComponent(range.from)}&to_date=${encodeURIComponent(range.to)}`
+      );
+
+      if (res2.ok) {
+        s2 = await res2.json();
+      } else if (res2.status === 404) {
+        s2 = makeEmptyDaily(range.from, range.to);
+      } else {
+        const txt = await res2.text().catch(() => "");
+        throw new Error(`stats daily HTTP ${res2.status}\n${fmtJsonError(txt)}`);
+      }
+
+// 3) SCHEDULE (план) - використовуємо новий API з автостворенням
+      const [y, m] = monthVal.split("-").map(Number);
+      
+      const res3 = await apiFetch(`/schedule/month`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          year: y,
+          month: m,
+          employee_id: Number(empIdVal)
+        })
+      });      if (!res3.ok) {
+        const txt = await res3.text().catch(() => "");
+        throw new Error(`schedule HTTP ${res3.status}\n${fmtJsonError(txt)}`);
+      }
+      const sched = await res3.json();
+      const scheduleMap = buildScheduleMap(sched);
+
+      // 4) Злиття daily + intervals + events
+      const mergedItems = mergeDailyWithIntervals(
+        s2.items || [],
+        s1.intervals || [],
+        s1.events || []
+      );
+
+      const allDaysItems = mergeDailyWithAllDays(range.from, range.to, mergedItems);
+
+      // 5) Рендер таблиці План/Факт
+      renderDailyPlanFact(allDaysItems, scheduleMap);
+
+      // Підсумки
+      renderAggregates(s2);
+
+      // 6) Рендер ГРАФІКА
+      try {
+        renderChart(allDaysItems, scheduleMap);
+      } catch (e) {
+        console.warn("Помилка renderChart:", e);
+      }
+
+      // 7) UI статус
+      document.getElementById("statsInfo").textContent =
+        `Готово. Події: ${(s1.events || []).length}, інтервали: ${(s1.intervals || []).length}.`;
+      setStatus(true, "Авторизовано");
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById("statsInfo").textContent =
+        `Помилка: ${String(err?.message || err)}`;
+      setStatus(false, "Помилка");
+    }
+  }
+
+  function renderChart(dailyItems, scheduleMap) {
+    const canvas = document.getElementById("chartCanvas");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    const labels = [];
+    const planData = [];
+    const factData = [];
+
+    (dailyItems || []).forEach(r => {
+      const day = r.date_local || "";
+      const sch = (scheduleMap && scheduleMap.get) ? (scheduleMap.get(day) || null) : null;
+
+      labels.push(day);
+
+      const planMinutes = (sch && sch.expected_minutes !== undefined && sch.expected_minutes !== null)
+        ? sch.expected_minutes
+        : null;
+
+      const factWorked = (r.worked_minutes !== undefined && r.worked_minutes !== null)
+        ? r.worked_minutes
+        : null;
+
+      planData.push(planMinutes !== null ? (planMinutes / 60) : 0);
+      factData.push(factWorked !== null ? (factWorked / 60) : 0);
+    });
+
+    chartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "План (год)",
+            data: planData,
+            borderColor: "rgba(74,144,226,0.8)",
+            backgroundColor: "rgba(74,144,226,0.2)",
+            tension: 0.2
+          },
+          {
+            label: "Факт (год)",
+            data: factData,
+            borderColor: "rgba(45,204,112,0.8)",
+            backgroundColor: "rgba(45,204,112,0.2)",
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: "rgba(255,255,255,0.88)" }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "rgba(255,255,255,0.70)" },
+            grid: { color: "rgba(255,255,255,0.08)" }
+          },
+          y: {
+            ticks: { color: "rgba(255,255,255,0.70)" },
+            grid: { color: "rgba(255,255,255,0.08)" },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+// ===== Schedule =====
+let schedEmployeesFiltered = [];
+
+function schedApplyFilter() {
+  const q = (document.getElementById("schedSearch")?.value || "").trim().toLowerCase();
+  schedEmployeesFiltered = !q ? [..._employeesCache] : _employeesCache.filter(e => {
+    const hay = [e.id, e.full_name, e.nfc_uid, e.position, e.comment].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+  schedRenderEmpSelect();
+}
+
+function schedRenderEmpSelect() {
+  const sel = document.getElementById("schedEmp");
+  const keep = sel.value;
+  sel.innerHTML = `<option value="">— оберіть —</option>`;
+  
+  (schedEmployeesFiltered || []).forEach(e => {
+    const opt = document.createElement("option");
+    opt.value = e.id;
+    opt.textContent = `${e.id} — ${e.full_name}`;
+    sel.appendChild(opt);
+  });
+  
+  if (keep) sel.value = keep;
+}
+
+function schedInitFilters() {
+  schedEmployeesFiltered = Array.isArray(_employeesCache) ? [..._employeesCache] : [];
+  schedRenderEmpSelect();
+  
+  // Встановлюємо поточний місяць
+  const now = new Date();
+  const schedMonth = document.getElementById("schedMonth");
+  if (schedMonth) {
+    schedMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+  }
+}
+
   function normalizeScheduleCell(v) {
     const s = (v || "").trim();
     if (!s) return { code: null, start_hhmm: null, end_hhmm: null };
@@ -1496,55 +1969,48 @@ function mergeDailyWithIntervals(dailyItems, intervals, events) {
     return { code: s, start_hhmm: null, end_hhmm: null };
   }
 
-  function onScheduleModeChange() {
-    const mode = schedMode.value;
-    document.getElementById("scheduleWideBox").style.display = (mode === "all") ? "block" : "none";
-    document.getElementById("scheduleMatrixBox").style.display = (mode === "single") ? "block" : "none";
+function onScheduleModeChange() {
+  const mode = document.getElementById("schedMode").value;
+  document.getElementById("scheduleWideBox").style.display = (mode === "all") ? "block" : "none";
+  document.getElementById("scheduleMatrixBox").style.display = (mode === "single") ? "block" : "none";
+  document.getElementById("schedSingleEmployeeBox").style.display = (mode === "single") ? "block" : "none";
+}
+
+async function loadSchedule() {
+  const mode = document.getElementById("schedMode").value;
+  const monthVal = document.getElementById("schedMonth").value;
+  const empId = Number(document.getElementById("schedEmp").value || 0);
+
+  if (!monthVal) {
+    alert("Оберіть місяць");
+    return;
   }
 
-  async function loadSchedule() {
-    const mode = schedMode.value;
-    const from = schedFrom.value;
-    const to = schedTo.value;
-    const empId = Number(schedEmp.value || 0);
+  const range = monthToRange(monthVal);
+  if (!range) {
+    alert("Невірний місяць");
+    return;
+  }
 
-    if (!from) { alert("Вкажіть from_date"); return; }
-    if (mode === "all" && !to) { alert("Вкажіть to_date"); return; }
-    if (mode === "single" && !empId) { alert("Оберіть співробітника"); return; }
+  if (mode === "single" && !empId) {
+    alert("Оберіть співробітника");
+    return;
+  }
 
-    if (mode === "single") {
-      const dt = parseYmd(from);
-      const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
-      const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+  if (mode === "single") {
+    // Режим одного співробітника
+    const [y, m] = monthVal.split("-").map(Number);
+    
+    const res = await apiFetch(`/schedule/month`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        year: y,
+        month: m,
+        employee_id: empId
+      })
+    });
 
-      const q = new URLSearchParams();
-      q.set("date_from", ymd(monthStart));
-      q.set("date_to", ymd(monthEnd));
-      q.set("employee_id", String(empId));
-
-      const res = await apiFetch(`/schedule?${q.toString()}`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
-      }
-      const data = await res.json();
-
-      const map = new Map();
-      for (const it of (data.items || [])) {
-        map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
-      }
-
-      renderScheduleMatrix(empId, monthStart, monthEnd, map);
-      document.getElementById("matrixHint").textContent =
-        `${monthStart.toLocaleString("uk", { month: "long" })} ${monthStart.getFullYear()}`;
-      return;
-    }
-
-    const q = new URLSearchParams();
-    q.set("date_from", from);
-    q.set("date_to", to);
-
-    const res = await apiFetch(`/schedule?${q.toString()}`);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
@@ -1556,18 +2022,38 @@ function mergeDailyWithIntervals(dailyItems, intervals, events) {
       map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
     }
 
-    const employees = document.getElementById("empSearch")?.value?.trim()
-      ? (function(){
-          const q2 = document.getElementById("empSearch").value.trim().toLowerCase();
-          return _employeesCache.filter(e => {
-            const hay = [e.id,e.full_name,e.nfc_uid,e.position,e.comment].filter(Boolean).join(" ").toLowerCase();
-            return hay.includes(q2);
-          });
-        })()
-      : _employeesCache;
+    const dt = parseYmd(range.from);
+    const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+    const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
 
-    renderScheduleWideTable(employees, from, to, map);
+    renderScheduleMatrix(empId, monthStart, monthEnd, map);
+
+    document.getElementById("matrixHint").textContent =
+      `${monthStart.toLocaleString("uk", { month: "long" })} ${monthStart.getFullYear()}`;
+    return;
   }
+
+  // Режим всіх співробітників
+  const q = new URLSearchParams();
+  q.set("date_from", range.from);
+  q.set("date_to", range.to);
+
+  const res = await apiFetch(`/schedule?${q.toString()}`);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
+  }
+  const data = await res.json();
+
+  const map = new Map();
+  for (const it of (data.items || [])) {
+    map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
+  }
+
+  const employees = _employeesCache;
+  renderScheduleWideTable(employees, range.from, range.to, map);
+}
+
 
   function renderScheduleWideTable(employees, from, to, map) {
     const days = eachDay(from, to);
@@ -1611,21 +2097,13 @@ function mergeDailyWithIntervals(dailyItems, intervals, events) {
     tbody.innerHTML = "";
 
     const trh = document.createElement("tr");
-    trh.innerHTML = `
-      <th style="min-width:92px;">1</th>
-      <th style="min-width:92px;">2</th>
-      <th style="min-width:92px;">3</th>
-      <th style="min-width:92px;">4</th>
-      <th style="min-width:92px;">5</th>
-      <th style="min-width:92px;">6</th>
-      <th style="min-width:92px;">7</th>
-    `;
+    trh.innerHTML = `<th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th>`;
     thead.appendChild(trh);
 
-const daysInMonth = monthEnd.getDate();
+    const daysInMonth = monthEnd.getDate();
     const rows = Math.ceil(daysInMonth / 7);
-
     let day = 1;
+
     for (let r = 0; r < rows; r++) {
       const tr = document.createElement("tr");
 
@@ -1634,86 +2112,56 @@ const daysInMonth = monthEnd.getDate();
           const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
           const dayStr = ymd(d);
           const key = `${employeeId}|${dayStr}`;
-          const val = map.get(key) || "";
+          const it = map.get(key) || "";
+
+          let display = "";
+          if (typeof it === "string") {
+            display = it;
+          } else if (it && it.start_hhmm) {
+            display = `${it.start_hhmm}-${it.end_hhmm}`;
+          } else if (it && it.code) {
+            display = it.code;
+          }
 
           const td = document.createElement("td");
           td.className = "matrix-cell";
-          td.dataset.emp = String(employeeId);
-          td.dataset.day = dayStr;
-          td.onclick = () => editScheduleMatrixCell(td);
 
           td.innerHTML = `
             <div class="daynum">
-              <span>${day}</span>
-              <span class="muted small">${dayStr}</span>
+              <span>${day}</span><span class="muted small">${dayStr}</span>
             </div>
-            <div class="shifttext">${val || ""}</div>
+            <div class="shifttext">${display}</div>
           `;
+
           tr.appendChild(td);
           day++;
         } else {
           const td = document.createElement("td");
           td.className = "empty";
-          td.innerHTML = `—`;
+          td.textContent = "—";
           tr.appendChild(td);
         }
       }
-
       tbody.appendChild(tr);
     }
   }
 
-  async function editScheduleMatrixCell(td) {
-    const empId = Number(td.dataset.emp);
-    const day = td.dataset.day;
-    const cur = td.querySelector(".shifttext")?.textContent?.trim() || "";
+async function openSchedulePdf() {
+  const monthVal = document.getElementById("schedMonth").value;
 
-    const input = prompt(
-      `Зміна на ${day}\n\nВведіть:\n- HH:MM-HH:MM (наприклад 07:00-19:00)\n- або код (В, Відр., Н)\n- порожньо = видалити`,
-      cur
-    );
-    if (input === null) return;
-
-    const n = normalizeScheduleCell(input);
-
-    const res = await apiFetch(`/schedule/cell`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        employee_id: empId,
-        day: day,
-        start_hhmm: n.start_hhmm,
-        end_hhmm: n.end_hhmm,
-        code: n.code
-      })
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      alert(`Помилка збереження: HTTP ${res.status}\n${fmtJsonError(txt)}`);
-      return;
-    }
-
-    const text = n.code ? n.code : ((n.start_hhmm || n.end_hhmm) ? `${n.start_hhmm || ""}-${n.end_hhmm || ""}` : "");
-    td.querySelector(".shifttext").textContent = text;
+  if (!monthVal) {
+    alert("Оберіть місяць");
+    return;
   }
 
-  async function openSchedulePdf() {
-    const mode = schedMode.value;
-    let from = schedFrom.value;
-    let to = schedTo.value;
+  const range = monthToRange(monthVal);
+  if (!range) {
+    alert("Невірний місяць");
+    return;
+  }
 
-    if (!from) { alert("Вкажіть from_date"); return; }
-
-    if (mode === "single") {
-      const dt = parseYmd(from);
-      const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
-      const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
-      from = ymd(monthStart);
-      to = ymd(monthEnd);
-    } else {
-      if (!to) { alert("Вкажіть to_date"); return; }
-    }
+  const from = range.from;
+  const to = range.to;
 
     const res = await apiFetch(`/schedule/pdf?date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`);
     if (!res.ok) {
@@ -1727,57 +2175,538 @@ const daysInMonth = monthEnd.getDate();
     window.open(url, "_blank");
   }
 
-  // ===== INIT =====
+  // ======================= PLAN BUILDER =======================
 
-  function initScheduleDates() {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    schedFrom.value = ymd(first);
-    schedTo.value = ymd(last);
+  let pbEmployeesFiltered = [];
+  let pbSelected = new Set();
+  let pbScheduleMap = new Map();
+  let pbMonthRange = null;
+  let pbCurrentEmpId = null;
+
+  function pbInit() {
+    pbEmployeesFiltered = Array.isArray(_employeesCache) ? [..._employeesCache] : [];
+    pbRenderEmpSelect();
+
+    const m = document.getElementById("pbMonth");
+    if (m && !m.value) {
+      const now = new Date();
+      m.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+    }
+
+    pbSelected.clear();
+    pbCurrentEmpId = null;
+    pbScheduleMap = new Map();
+    pbMonthRange = null;
+
+    pbLoadMonth();
   }
 
-  function initMonthPicker() {
-    const mp = document.getElementById("monthPick");
-    const prev = document.getElementById("rangePreview");
-    if (!mp || !prev) return;
+  function pbRenderEmpSelect() {
+    const sel = document.getElementById("pbEmpSelect");
+    const keep = sel.value;
+    sel.innerHTML = "";
 
-    // default: current month
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    mp.value = `${y}-${m}`;
+    (pbEmployeesFiltered || []).forEach(e => {
+      const opt = document.createElement("option");
+      opt.value = String(e.id);
+      opt.textContent = `${e.id} — ${e.full_name}`;
+      sel.appendChild(opt);
+    });
 
-    const r = monthToRange(mp.value);
-    prev.value = r ? `${r.from} → ${r.to}` : "";
+    if (keep) sel.value = keep;
+  }
 
-    mp.addEventListener("change", () => {
-      const r2 = monthToRange(mp.value);
-      prev.value = r2 ? `${r2.from} → ${r2.to}` : "";
+  function pbApplyFilter() {
+    const q = (document.getElementById("pbSearch")?.value || "").trim().toLowerCase();
+    pbEmployeesFiltered = !q ? [..._employeesCache] : _employeesCache.filter(e => {
+      const hay = [e.id, e.full_name, e.nfc_uid, e.position, e.comment].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+    pbRenderEmpSelect();
+  }
+
+  function pbOnEmpPicked() {
+    const sel = document.getElementById("pbEmpSelect");
+    pbCurrentEmpId = sel && sel.value ? Number(sel.value) : null;
+    pbReloadFromServer();
+  }
+
+  function pbMonthToRange(monthStr) {
+    const [y, m] = String(monthStr || "").split("-").map(Number);
+    if (!y || !m) return null;
+    const last = new Date(y, m, 0).getDate();
+    return { from: `${y}-${String(m).padStart(2,"0")}-01`, to: `${y}-${String(m).padStart(2,"0")}-${String(last).padStart(2,"0")}`, y, m };
+  }
+
+  function pbLoadMonth() {
+    const monthVal = document.getElementById("pbMonth")?.value || "";
+    pbMonthRange = pbMonthToRange(monthVal);
+    pbSelected.clear();
+    pbRenderMatrix();
+  }
+
+    function pbReloadFromServer() {
+      if (!pbCurrentEmpId) {
+        pbSetInfo("Оберіть співробітника.");
+        pbRenderMatrix();
+        return;
+      }
+      if (!pbMonthRange) {
+        pbSetInfo("Оберіть місяць.");
+        pbRenderMatrix();
+        return;
+      }
+      // Викликаємо з year та month замість from/to
+      pbFetchScheduleForMonth(pbCurrentEmpId, pbMonthRange.y, pbMonthRange.m);
+    }
+
+  function pbSetInfo(msg) {
+    const el = document.getElementById("pbInfo");
+    if (el) el.textContent = msg;
+  }
+
+async function pbFetchScheduleForMonth(empId, year, month) {
+  try {
+    pbSetInfo("Завантажую розклад з сервера (автостворення пустих графіків)...");
+    
+    const res = await apiFetch(`/schedule/month`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        year: year,
+        month: month,
+        employee_id: empId
+      })
+    });
+if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      pbSetInfo(`Помилка /schedule/month: HTTP ${res.status} ${fmtJsonError(txt)}`);
+        pbScheduleMap = new Map();
+        pbRenderMatrix();
+        return;
+      }
+
+      const data = await res.json();
+      pbScheduleMap = new Map();
+      for (const it of (data.items || [])) {
+        pbScheduleMap.set(it.day, {
+          text: scheduleCellText(it),
+          start_hhmm: it.start_hhmm || null,
+          end_hhmm: it.end_hhmm || null,
+          code: it.code || null
+        });
+      }
+
+    pbSetInfo("✅ Готово! Пусті графіки створені автоматично. Виберіть дні та застосуйте час/вихідний.");
+      pbRenderMatrix();
+    } catch (e) {
+      pbSetInfo(`Помилка: ${String(e?.message || e)}`);
+      pbScheduleMap = new Map();
+      pbRenderMatrix();
+    }
+  }
+
+  function pbRenderMatrix() {
+    const thead = document.querySelector("#pbMatrix thead");
+    const tbody = document.querySelector("#pbMatrix tbody");
+    if (!thead || !tbody) return;
+
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    const trh = document.createElement("tr");
+    trh.innerHTML = `
+      <th style="min-width:98px;">Пн</th>
+      <th style="min-width:98px;">Вт</th>
+      <th style="min-width:98px;">Ср</th>
+      <th style="min-width:98px;">Чт</th>
+      <th style="min-width:98px;">Пт</th>
+      <th style="min-width:98px;">Сб</th>
+      <th style="min-width:98px;">Нд</th>
+    `;
+    thead.appendChild(trh);
+
+    if (!pbMonthRange) return;
+
+    const y = pbMonthRange.y;
+    const m1 = pbMonthRange.m;
+    const daysTotal = new Date(y, m1, 0).getDate();
+
+    const first = new Date(y, m1 - 1, 1);
+    const firstDow = (first.getDay() + 6) % 7;
+
+    const totalCells = firstDow + daysTotal;
+    const rows = Math.ceil(totalCells / 7);
+
+    let day = 1;
+    for (let r = 0; r < rows; r++) {
+      const tr = document.createElement("tr");
+
+      for (let c = 0; c < 7; c++) {
+        const cellIndex = r * 7 + c;
+
+        if (cellIndex < firstDow || day > daysTotal) {
+          const td = document.createElement("td");
+          td.className = "empty";
+          td.textContent = "—";
+          tr.appendChild(td);
+          continue;
+        }
+
+        const dateStr = `${y}-${String(m1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+        const sch = pbScheduleMap.get(dateStr) || null;
+
+        const selected = pbSelected.has(dateStr);
+        const td = document.createElement("td");
+        td.className = "pb-cell" + (selected ? " selected" : "");
+        td.dataset.day = dateStr;
+        td.onclick = () => pbToggleDay(dateStr);
+
+const text = sch ? (sch.text || "") : "";
+// Якщо текст це 00:00-00:00, замінюємо на прочерк
+const displayText = (text === "00:00-00:00") ? "—" : text;
+const shiftLabel = displayText ? escapeHtml(displayText) : "—";
+const muted0 = (!displayText || displayText === "—" || displayText === "0") ? "muted0" : "";
+
+        td.innerHTML = `
+          <div class="pb-check">${selected ? "✓" : ""}</div>
+          <div class="daynum"><span>${day}</span><span class="muted small">${dateStr}</span></div>
+          <div class="pb-shift ${muted0}">${shiftLabel}</div>
+        `;
+
+        tr.appendChild(td);
+        day++;
+      }
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  function pbToggleDay(dayStr) {
+    if (pbSelected.has(dayStr)) pbSelected.delete(dayStr);
+    else pbSelected.add(dayStr);
+    pbRenderMatrix();
+  }
+
+  function pbSelectAll() {
+    if (!pbMonthRange) return;
+    const { y, m } = pbMonthRange;
+    const last = new Date(y, m, 0).getDate();
+    pbSelected.clear();
+    for (let d = 1; d <= last; d++) {
+      pbSelected.add(`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`);
+    }
+    pbRenderMatrix();
+  }
+
+  function pbClearSelection() {
+    pbSelected.clear();
+    pbRenderMatrix();
+  }
+
+  function pbApplyToSelected() {
+    if (!pbSelected.size) { pbSetInfo("Виберіть дні."); return; }
+
+    const off = document.getElementById("pbDayOff").checked;
+    const st = document.getElementById("pbStart").value.trim();
+    const en = document.getElementById("pbEnd").value.trim();
+
+    if (!off && !st && !en) {
+      pbSetInfo("Введіть час або позначте вихідний.");
+      return;
+    }
+
+    for (const d of pbSelected) {
+      if (off) {
+        pbScheduleMap.set(d, { text: "В", code: "В", start_hhmm: null, end_hhmm: null });
+      } else {
+        pbScheduleMap.set(d, { text: `${st}-${en}`, code: null, start_hhmm: st, end_hhmm: en });
+      }
+    }
+
+    pbRenderMatrix();
+    pbSetInfo("Застосовано локально. Тепер натисніть Зберегти.");
+  }
+
+function pbClearSelectedCells() {
+  if (!pbSelected.size) { pbSetInfo("Спочатку виберіть дні."); return; }
+  
+  // Замість видалення - ставимо 00:00-00:00 (пустий графік)
+  for (const dayStr of pbSelected) {
+    pbScheduleMap.set(dayStr, {
+      text: "—",
+      code: null,
+      start_hhmm: "00:00",
+      end_hhmm: "00:00"
+    });
+  }
+  
+  pbSetInfo("Очищено локально. Натисніть \"Зберегти\", щоб оновити на сервері.");
+  pbRenderMatrix();
+}
+
+async function pbSaveSelected() {
+  if (!pbCurrentEmpId) { pbSetInfo("Оберіть працівника."); return; }
+  if (!pbSelected.size) { pbSetInfo("Немає вибраних днів."); return; }
+  if (!pbMonthRange) { pbSetInfo("Оберіть місяць."); return; }
+
+  pbSetInfo("Зберігаю...");
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const day of pbSelected) {
+    const raw = pbScheduleMap.get(day);
+    
+    if (!raw) {
+      console.warn(`Немає даних для ${day}, пропускаємо`);
+      continue;
+    }
+
+    // Використовуємо дані напряму з pbScheduleMap
+    const payload = {
+      employee_id: pbCurrentEmpId,
+      day: day,
+      code: raw.code || null,
+      start_hhmm: raw.start_hhmm || null,
+      end_hhmm: raw.end_hhmm || null
+    };
+
+    console.log('Зберігаю:', payload); // Для дебагу
+
+    const r = await postScheduleCellPB(payload);
+    if (!r.ok) {
+      pbSetInfo(`Помилка збереження для ${day}:\n${r.error}`);
+      errorCount++;
+      // Не припиняємо, намагаємося зберегти інші
+    } else {
+      successCount++;
+    }
+  }
+
+  // Оновлюємо дані з сервера
+  const res = await apiFetch(`/schedule/month`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      year: pbMonthRange.y,
+      month: pbMonthRange.m,
+      employee_id: pbCurrentEmpId
+    })
+  });
+
+  if (!res.ok) {
+    pbSetInfo(`Збережено ${successCount}, помилок: ${errorCount}. Не вдалося оновити дані.`);
+    return;
+  }
+
+  const data = await res.json();
+  pbScheduleMap = new Map();
+
+  for (const it of (data.items || [])) {
+    pbScheduleMap.set(it.day, {
+      text: it.code ? it.code : `${it.start_hhmm || ""}${it.end_hhmm ? "-" + it.end_hhmm : ""}`,
+      code: it.code || null,
+      start_hhmm: it.start_hhmm || null,
+      end_hhmm: it.end_hhmm || null
     });
   }
 
-  initPositionSelect();
-  initScheduleDates();
-  onScheduleModeChange();
-  initMonthPicker();
+  pbRenderMatrix();
+  pbSetInfo(`✅ Збережено: ${successCount}, помилок: ${errorCount}`);
+}
 
-  (async () => {
-    const token = getToken();
-    if (!token) {
-      setStatus(false, "Не авторизовано");
-      openLogin();
+
+function normalizePbCell(input) {
+    const v = String(input || "").trim();
+    if (!v) return { code: null, start_hhmm: null, end_hhmm: null };
+
+    const m = v.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+    if (m) {
+      return { code: null, start_hhmm: m[1], end_hhmm: m[2] };
+    }
+    return { code: v, start_hhmm: null, end_hhmm: null };
+  }
+
+async function postScheduleCellPB(payload) {
+  try {
+    console.log('POST /schedule/cell:', JSON.stringify(payload)); // Для дебагу
+    
+    const res = await apiFetch(`/schedule/cell`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error('Помилка відповіді:', txt); // Для дебагу
+      return { ok: false, error: `HTTP ${res.status}\n${fmtJsonError(txt)}` };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    console.error('Exception:', e); // Для дебагу
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+  // ===== Schedule viewing (moved to Stats tab) =====
+  async function loadScheduleView() {
+    const empIdVal = document.getElementById("empSelect").value;
+    const monthVal = document.getElementById("monthPick").value;
+
+    if (!empIdVal) {
+      alert("Оберіть співробітника");
       return;
     }
-    try {
-      await loadEmployees();
-      setStatus(true, "Авторизовано");
-    } catch (e) {
-      console.error(e);
-      setStatus(false, "Токен недійсний/помилка");
-      openLogin();
+    if (!monthVal) {
+      alert("Оберіть місяць");
+      return;
     }
-  })();
+
+    const range = monthToRange(monthVal);
+    if (!range) {
+      alert("Невірний місяць");
+      return;
+    }
+
+    const dt = parseYmd(range.from);
+    const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+    const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+
+    const q = new URLSearchParams();
+    q.set("date_from", ymd(monthStart));
+    q.set("date_to", ymd(monthEnd));
+    q.set("employee_id", String(empIdVal));
+
+    try {
+      const res = await apiFetch(`/schedule?${q.toString()}`);
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`schedule HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      }
+      const data = await res.json();
+
+      const map = new Map();
+      for (const it of (data.items || [])) {
+        map.set(`${it.employee_id}|${it.day}`, scheduleCellText(it));
+      }
+
+      renderScheduleMatrixInStats(empIdVal, monthStart, monthEnd, map);
+
+      document.getElementById("scheduleMatrixBox").style.display = "block";
+      document.getElementById("matrixHint").textContent =
+        `${monthStart.toLocaleString("uk", { month: "long" })} ${monthStart.getFullYear()}`;
+    } catch (e) {
+      alert(`Помилка: ${String(e?.message || e)}`);
+    }
+  }
+
+  function renderScheduleMatrixInStats(employeeId, monthStart, monthEnd, map) {
+    const thead = document.querySelector("#scheduleMatrix thead");
+    const tbody = document.querySelector("#scheduleMatrix tbody");
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    const trh = document.createElement("tr");
+    trh.innerHTML = `<th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th>`;
+    thead.appendChild(trh);
+
+    const daysInMonth = monthEnd.getDate();
+    const rows = Math.ceil(daysInMonth / 7);
+    let day = 1;
+
+    for (let r = 0; r < rows; r++) {
+      const tr = document.createElement("tr");
+
+      for (let c = 0; c < 7; c++) {
+        if (day <= daysInMonth) {
+          const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+          const dayStr = ymd(d);
+          const key = `${employeeId}|${dayStr}`;
+          const it = map.get(key) || "";
+
+          let display = "";
+          if (typeof it === "string") {
+            display = it;
+          } else if (it && it.start_hhmm) {
+            display = `${it.start_hhmm}-${it.end_hhmm}`;
+          } else if (it && it.code) {
+            display = it.code;
+          }
+
+          const td = document.createElement("td");
+          td.className = "matrix-cell";
+
+          td.innerHTML = `
+            <div class="daynum">
+              <span>${day}</span><span class="muted small">${dayStr}</span>
+            </div>
+            <div class="shifttext">${display}</div>
+          `;
+
+          tr.appendChild(td);
+          day++;
+        } else {
+          const td = document.createElement("td");
+          td.className = "empty";
+          td.textContent = "—";
+          tr.appendChild(td);
+        }
+      }
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function openSchedulePdfFromStats() {
+    const monthVal = document.getElementById("monthPick").value;
+    if (!monthVal) {
+      alert("Оберіть місяць");
+      return;
+    }
+
+    const range = monthToRange(monthVal);
+    if (!range) {
+      alert("Невірний місяць");
+      return;
+    }
+
+    const res = await apiFetch(`/schedule/pdf?date_from=${encodeURIComponent(range.from)}&date_to=${encodeURIComponent(range.to)}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      alert(`Помилка PDF: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  }
+
+  // ===== INIT =====
+  window.addEventListener("DOMContentLoaded", async () => {
+    initPositionSelect();
+
+    const now = new Date();
+    const monthPick = document.getElementById("monthPick");
+    if (monthPick) {
+      monthPick.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+    }
+
+    const token = getToken();
+    if (token) {
+      setStatus(null, "Перевірка...");
+      try {
+        await loadEmployees();
+      } catch (e) {
+        console.error(e);
+        setStatus(false, "Помилка");
+      }
+    } else {
+      setStatus(false, "Не авторизовано");
+    }
+  });
 </script>
 
 </body>

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -45,15 +45,3 @@ def require_admin(
         raise HTTPException(status_code=403, detail="Not allowed")
 
     return payload
-
-
-# app/api/deps.py
-from typing import Generator
-from app.db.session import SessionLocal
-
-def get_db() -> Generator:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

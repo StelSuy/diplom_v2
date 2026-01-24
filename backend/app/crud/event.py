@@ -1,4 +1,4 @@
-﻿from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 from datetime import datetime, timezone
 
@@ -21,23 +21,39 @@ def get_last_event_for_employee(db: Session, employee_id: int) -> Event | None:
 def create_event(
     db: Session,
     employee_id: int,
-    terminal_id: int | str,
+    terminal_id: int,
     direction: str,
     ts,
 ) -> Event:
     """
     Базовое создание события.
-    Здесь без проверки на дубль направления — т.к. направление может определяться выше.
+    
+    Args:
+        db: Database session
+        employee_id: ID сотрудника
+        terminal_id: ID терминала (Integer)
+        direction: 'IN' или 'OUT'
+        ts: timestamp события
+    
+    Returns:
+        Created Event object
     """
     direction = direction.upper().strip()
     if direction not in ("IN", "OUT"):
         raise ValueError("direction must be IN or OUT")
 
     ts_utc = ensure_utc(ts)
+    
+    # Убеждаемся что terminal_id это int
+    if not isinstance(terminal_id, int):
+        try:
+            terminal_id = int(terminal_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"terminal_id must be an integer, got {type(terminal_id)}")
 
     ev = Event(
         employee_id=employee_id,
-        terminal_id=str(terminal_id),
+        terminal_id=terminal_id,
         direction=direction,
         ts=ts_utc,
     )
@@ -58,16 +74,21 @@ def list_events_for_employee(db: Session, employee_id: int) -> list[Event]:
 
 def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -> dict:
     """
-    ВАЖНО: сервер сам определяет направление:
-      - если последнее событие IN -> новое OUT
-      - иначе -> новое IN
-
-    payload.direction принимаем, но НЕ доверяем (для стабильности, пока Android шлёт IN всегда).
-    payload.ts ожидается в миллисекундах (Android).
+    Создание события от терминала с авто-определением направления.
+    
+    Логика:
+    - Если последнее событие было IN -> новое OUT
+    - Иначе -> новое IN
+    
+    Args:
+        db: Database session
+        payload: TerminalScanRequest с данными от терминала
+    
+    Returns:
+        dict с информацией о созданном событии или сообщением о cooldown
     """
-
     uid = payload.uid.strip().upper()
-    terminal_id = str(payload.terminal_id).strip()
+    terminal_id = int(payload.terminal_id)
 
     employee = db.query(Employee).filter(Employee.nfc_uid == uid).first()
     if not employee:
@@ -80,7 +101,7 @@ def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -
 
     last = get_last_event_for_employee(db, employee.id)
 
-    # Cooldown (если задан в Settings / .env)
+    # Cooldown проверка
     cooldown_sec = int(getattr(settings, "terminal_scan_cooldown_seconds", 0) or 0)
     if cooldown_sec > 0 and last:
         last_ts = last.ts
@@ -92,13 +113,12 @@ def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -
         delta = (ts_utc - last_ts).total_seconds()
         if delta < cooldown_sec:
             wait_left = int(cooldown_sec - delta)
-            # Важно: НЕ кидаем 400, иначе Android может уходить в fallback first-scan.
             return {
                 "employee_id": employee.id,
                 "message": f"cooldown_wait_{wait_left}s",
             }
 
-    # Авто-направление
+    # Авто-определение направления
     if last and (last.direction or "").upper().strip() == "IN":
         direction = "OUT"
     else:
@@ -116,5 +136,7 @@ def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -
 
     return {
         "employee_id": employee.id,
+        "event_id": ev.id,
+        "direction": direction,
         "message": f"Registered {direction} for {employee.full_name}",
     }
