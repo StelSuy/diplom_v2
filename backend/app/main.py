@@ -5,7 +5,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.routing import Match
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.core.config import settings
@@ -21,6 +20,10 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+print("=" * 80)
+print("MAIN.PY LOADED - VERSION 2.0 - SIMPLIFIED MIDDLEWARE")
+print("=" * 80)
 
 app = FastAPI(
     title=settings.app_name,
@@ -85,37 +88,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Request Logging Middleware (только в debug режиме)
+# Simple Request Logging Middleware
 if settings.debug:
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
-        logger.debug(f">>> {request.method} {request.url.path}")
-        
-        # Логируем заголовки
-        ua = request.headers.get("user-agent", "-")
-        ct = request.headers.get("content-type", "-")
-        logger.debug(f"    User-Agent: {ua}")
-        logger.debug(f"    Content-Type: {ct}")
-
-        # Проверяем совпадение маршрутов
-        matches = []
-        for r in app.router.routes:
-            try:
-                m, _ = r.matches(
-                    {"type": "http", "method": request.method, "path": request.url.path, "headers": []}
-                )
-                if m == Match.FULL:
-                    matches.append((getattr(r, "path", ""), getattr(r, "methods", None)))
-            except Exception:
-                pass
-
-        if not matches:
-            logger.warning(f"    No route match for {request.method} {request.url.path}")
-        else:
-            logger.debug(f"    Matched routes: {matches}")
-
+        logger.info(f">>> {request.method} {request.url.path}")
         response = await call_next(request)
-        logger.debug(f"<<< {response.status_code} {request.url.path}\n")
+        logger.info(f"<<< {response.status_code}")
         return response
 
 

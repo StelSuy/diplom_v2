@@ -642,12 +642,13 @@ body[data-theme="light"] {
   </div>
 </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="openTab('employees')">Співробітники</button>
-    <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
-    <button class="tab-btn" onclick="openTab('planBuilder')">Конструктор графіка</button>
-    <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
-  </div>
+<div class="tabs">
+  <button class="tab-btn active" onclick="openTab('employees')">Співробітники</button>
+  <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
+  <button class="tab-btn" onclick="openTab('planBuilder')">Конструктор графіка</button>
+  <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
+  <button class="tab-btn" onclick="openTab('manualEntry')">Ручний ввід</button>
+</div>
 
   <!-- ================= EMPLOYEES ================= -->
   <div id="employees" class="tab-content active">
@@ -937,7 +938,92 @@ body[data-theme="light"] {
       </div>
     </div>
   </div>
+<!-- ================= MANUAL ENTRY ================= -->
+<div id="manualEntry" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:12px;">Ручний ввід події (вхід/вихід)</div>
+        
+        <div class="info" style="margin-bottom:12px;">
+          ⚠️ Використовуйте цю функцію тільки у випадку проблем з терміналом або телефоном користувача.
+          Для кожної операції потрібна повторна авторизація адміністратора.
+        </div>
 
+        <div class="grid2">
+          <div>
+            <label>Пошук співробітника</label>
+            <input id="manualEmpSearch" placeholder="Введи ПІБ / ID / NFC..." oninput="manualApplyFilter()" />
+          </div>
+          <div>
+            <label>Співробітник</label>
+            <select id="manualEmpSelect"></select>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:10px;">
+          <div>
+            <label>Дата</label>
+            <input id="manualDate" type="date" />
+          </div>
+          <div>
+            <label>Час (ГГ:ХХ:СС)</label>
+            <input id="manualTime" type="time" step="1" placeholder="14:30:00" />
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Тип події</label>
+          <select id="manualDirection">
+            <option value="IN">Вхід (IN)</option>
+            <option value="OUT">Вихід (OUT)</option>
+          </select>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Термінал (опціонально)</label>
+          <select id="manualTerminal">
+            <option value="">— автоматично —</option>
+          </select>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Коментар / Причина</label>
+          <textarea id="manualComment" placeholder="Наприклад: Телефон розряджений, термінал не спрацював..."></textarea>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+          <button class="btn" onclick="openManualEntryConfirm()">Додати подію</button>
+          <button class="btn secondary" onclick="clearManualForm()">Очистити</button>
+        </div>
+
+        <div id="manualInfo" class="info" style="margin-top:12px; display:none;"></div>
+        <div id="manualError" class="error" style="margin-top:12px;"></div>
+      </div>
+
+      <!-- Останні ручні події -->
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:8px;">
+          Останні ручні події
+          <button class="btn secondary" onclick="loadManualEvents()" style="margin-left:10px; padding:6px 10px; font-size:11px;">Оновити</button>
+        </div>
+        <table id="manualEventsTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Співробітник</th>
+              <th>Дата/Час</th>
+              <th>Тип</th>
+              <th>Адмін</th>
+              <th>Коментар</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- ================= LOGIN ================= -->
   <div id="loginBackdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true">
@@ -965,7 +1051,37 @@ body[data-theme="light"] {
     </div>
   </div>
 
+<!-- ================= MANUAL ENTRY CONFIRM ================= -->
+<div id="manualConfirmBackdrop" class="modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Підтвердження ручного вводу</div>
+      <button class="btn secondary" onclick="closeManualConfirm()">Закрити</button>
+    </div>
+    <div class="modal-body">
+      <div class="info" style="margin-bottom:12px;">
+        <strong>Підтвердіть дані події:</strong>
+        <div id="manualConfirmDetails" style="margin-top:8px; white-space:pre-line;"></div>
+      </div>
 
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="font-weight:900; margin-bottom:8px;">Повторна авторизація адміністратора</div>
+        
+        <label>Логін</label>
+        <input id="manualConfirmLogin" autocomplete="username" />
+
+        <label>Пароль</label>
+        <input id="manualConfirmPassword" type="password" autocomplete="current-password" />
+      </div>
+
+      <div id="manualConfirmError" class="error"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeManualConfirm()">Скасувати</button>
+      <button class="btn" onclick="submitManualEntry()">Підтвердити і додати</button>
+    </div>
+  </div>
+</div>
 <script>
   const API_ROOT = "/api";
   let chartInstance = null;
@@ -1120,6 +1236,9 @@ body[data-theme="light"] {
       if (tabId === 'scheduleTab') {
         schedInitFilters();
       }
+      if (tabId === 'manualEntry') {
+          manualInitFilters();
+      }
     }
 
   function fmtJsonError(text) {
@@ -1128,20 +1247,32 @@ body[data-theme="light"] {
     return text;
   }
   
-  function fmtTime(ts) {
-    if (!ts) return "";
+function fmtTime(ts) {
+  if (!ts) return "";
+
+  const s = String(ts).trim();
   
-    const s = String(ts).trim();
-    const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (m) {
-      const hh = m[1], mm = m[2], ss = (m[3] ?? "00");
-      return `${hh}:${mm}:${ss}`;
-    }
-  
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  // Якщо це вже формат HH:MM або HH:MM:SS - повертаємо як є
+  const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) {
+    const hh = m[1], mm = m[2], ss = (m[3] ?? "00");
+    return `${hh}:${mm}:${ss}`;
   }
+
+  // Якщо це дата/час - показуємо ДАТУ І ЧАС
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "";
+  
+  // ⬇️ ТУТ ВИПРАВЛЕННЯ - показуємо дату і час
+  return d.toLocaleString('uk-UA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
 
   function toLocalMinutesAny(value) {
     if (!value) return null;
@@ -1738,6 +1869,304 @@ function scheduleCellText(it) {
     return out;
   }
 
+  // ===== MANUAL ENTRY =====
+let manualEmployeesFiltered = [];
+let manualPendingData = null;
+
+function manualApplyFilter() {
+  const q = (document.getElementById("manualEmpSearch")?.value || "").trim().toLowerCase();
+  manualEmployeesFiltered = !q ? [..._employeesCache] : _employeesCache.filter(e => {
+    const hay = [e.id, e.full_name, e.nfc_uid, e.position, e.comment].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+  manualRenderEmpSelect();
+}
+
+function manualRenderEmpSelect() {
+  const sel = document.getElementById("manualEmpSelect");
+  const keep = sel.value;
+  sel.innerHTML = `<option value="">— оберіть співробітника —</option>`;
+  
+  (manualEmployeesFiltered || []).forEach(e => {
+    const opt = document.createElement("option");
+    opt.value = e.id;
+    opt.textContent = `${e.id} — ${e.full_name} (${e.nfc_uid})`;
+    sel.appendChild(opt);
+  });
+  
+  if (keep) sel.value = keep;
+}
+
+async function manualInitFilters() {
+  manualEmployeesFiltered = Array.isArray(_employeesCache) ? [..._employeesCache] : [];
+  manualRenderEmpSelect();
+  
+  // Встановлюємо поточну дату і час
+  const now = new Date();
+  const dateEl = document.getElementById("manualDate");
+  const timeEl = document.getElementById("manualTime");
+  
+  if (dateEl) {
+    dateEl.value = ymd(now);
+  }
+  
+  if (timeEl) {
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    timeEl.value = `${hh}:${mm}:${ss}`;
+  }
+  
+  // Завантажуємо список терміналів
+  await loadTerminalsForManual();
+  
+  // Завантажуємо останні події
+  await loadManualEvents();
+}
+
+async function loadTerminalsForManual() {
+  try {
+    const res = await apiFetch("/terminals/");
+    if (!res.ok) return;
+    
+    const terminals = await res.json();
+    const sel = document.getElementById("manualTerminal");
+    sel.innerHTML = `<option value="">— автоматично —</option>`;
+    
+    terminals.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = `${t.location} (${t.identifier})`;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn("Не вдалося завантажити термінали:", e);
+  }
+}
+
+function clearManualForm() {
+  document.getElementById("manualEmpSelect").value = "";
+  document.getElementById("manualEmpSearch").value = "";
+  document.getElementById("manualComment").value = "";
+  
+  const now = new Date();
+  document.getElementById("manualDate").value = ymd(now);
+  
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  document.getElementById("manualTime").value = `${hh}:${mm}:${ss}`;
+  
+  document.getElementById("manualDirection").value = "IN";
+  document.getElementById("manualTerminal").value = "";
+  
+  const infoEl = document.getElementById("manualInfo");
+  const errorEl = document.getElementById("manualError");
+  if (infoEl) infoEl.style.display = "none";
+  if (errorEl) errorEl.style.display = "none";
+}
+
+function openManualEntryConfirm() {
+  const empId = document.getElementById("manualEmpSelect").value;
+  const dateVal = document.getElementById("manualDate").value;
+  const timeVal = document.getElementById("manualTime").value;
+  const direction = document.getElementById("manualDirection").value;
+  const terminalId = document.getElementById("manualTerminal").value;
+  const comment = document.getElementById("manualComment").value.trim();
+  
+  const errorEl = document.getElementById("manualError");
+  errorEl.style.display = "none";
+  
+  if (!empId) {
+    errorEl.textContent = "Оберіть співробітника";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  if (!dateVal) {
+    errorEl.textContent = "Вкажіть дату";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  if (!timeVal) {
+    errorEl.textContent = "Вкажіть час";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  if (!comment) {
+    errorEl.textContent = "Вкажіть причину ручного вводу";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  // Знаходимо співробітника
+  const employee = _employeesCache.find(e => e.id == empId);
+  if (!employee) {
+    errorEl.textContent = "Співробітника не знайдено";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  // Формуємо timestamp
+  const timestamp = `${dateVal}T${timeVal}`;
+  
+  // Зберігаємо дані для відправки
+  manualPendingData = {
+    employee_id: parseInt(empId),
+    timestamp: timestamp,
+    direction: direction,
+    terminal_id: terminalId ? parseInt(terminalId) : null,
+    comment: comment,
+  };
+  
+  // Показуємо деталі в модалці
+  const detailsEl = document.getElementById("manualConfirmDetails");
+  detailsEl.textContent =
+    `Співробітник: ${employee.full_name} (${employee.nfc_uid})\n` +
+    `Дата: ${dateVal}\n` +
+    `Час: ${timeVal}\n` +
+    `Тип: ${direction === "IN" ? "Вхід" : "Вихід"}\n` +
+    `Коментар: ${comment}`;
+  
+  // Очищуємо поля авторизації
+  document.getElementById("manualConfirmLogin").value = "";
+  document.getElementById("manualConfirmPassword").value = "";
+  document.getElementById("manualConfirmError").style.display = "none";
+  
+  // Показуємо модалку
+  document.getElementById("manualConfirmBackdrop").classList.add("show");
+  setTimeout(() => document.getElementById("manualConfirmLogin").focus(), 100);
+}
+
+function closeManualConfirm() {
+  document.getElementById("manualConfirmBackdrop").classList.remove("show");
+  manualPendingData = null;
+}
+
+async function submitManualEntry() {
+  const login = document.getElementById("manualConfirmLogin").value.trim();
+  const password = document.getElementById("manualConfirmPassword").value;
+  const errorEl = document.getElementById("manualConfirmError");
+  
+  errorEl.style.display = "none";
+  
+  if (!login || !password) {
+    errorEl.textContent = "Введіть логін і пароль";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  if (!manualPendingData) {
+    errorEl.textContent = "Помилка: дані події відсутні";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  try {
+    // 1. Повторна авторизація
+    const authRes = await fetch(`${API_ROOT}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: login, password: password })
+    });
+    
+    if (!authRes.ok) {
+      throw new Error("Невірний логін або пароль");
+    }
+    
+    const authData = await authRes.json();
+    const tempToken = extractToken(authData);
+    
+    if (!tempToken) {
+      throw new Error("Не вдалося отримати токен авторизації");
+    }
+    
+    // 2. Створюємо подію
+    const eventRes = await fetch(`${API_ROOT}/events/manual`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${tempToken}`
+      },
+      body: JSON.stringify(manualPendingData)
+    });
+    
+    if (!eventRes.ok) {
+      const errText = await eventRes.text().catch(() => "");
+      throw new Error(`Помилка створення події: ${errText || eventRes.status}`);
+    }
+    
+    const result = await eventRes.json();
+    
+    // Успіх!
+    closeManualConfirm();
+    
+    const infoEl = document.getElementById("manualInfo");
+    infoEl.textContent = `✅ Подію успішно додано! ID: ${result.id}`;
+    infoEl.style.display = "block";
+    
+    // Очищуємо форму
+    clearManualForm();
+    
+    // Оновлюємо список подій
+    await loadManualEvents();
+    
+  } catch (e) {
+    errorEl.textContent = String(e.message || e);
+    errorEl.style.display = "block";
+  }
+}
+
+async function loadManualEvents() {
+  try {
+    const res = await apiFetch("/events/manual?limit=20");
+    if (!res.ok) {
+      console.warn("Не вдалося завантажити ручні події");
+      return;
+    }
+    
+    const events = await res.json();
+    const tbody = document.querySelector("#manualEventsTable tbody");
+    tbody.innerHTML = "";
+    
+    if (!events || events.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="6" style="text-align:center; color:var(--muted);">Немає ручних подій</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    
+    events.forEach(e => {
+      const tr = document.createElement("tr");
+      const ts = e.ts_local || e.timestamp || e.ts;
+      const employee = e.employee_full_name || `ID: ${e.employee_id}`;
+      const admin = e.created_by_username || "—";
+      const comment = e.comment || "—";
+      
+      tr.innerHTML = `
+        <td>${e.id}</td>
+        <td>${escapeHtml(employee)}</td>
+        <td>${fmtTime(ts)}</td>
+        <td><span class="badge ${e.direction === 'IN' ? 'good' : 'warn'}">${e.direction}</span></td>
+        <td>${escapeHtml(admin)}</td>
+        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(comment)}">${escapeHtml(comment)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (e) {
+    console.error("Помилка завантаження ручних подій:", e);
+  }
+}
+  
+  
+  
+  
+  
+  
+  
   async function loadStats() {
     const empIdVal = document.getElementById("empSelect").value;
     const monthVal = document.getElementById("monthPick").value;

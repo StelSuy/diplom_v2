@@ -49,6 +49,16 @@ def _require_terminal_registered(db: Session, terminal_id: int) -> Terminal:
 router = APIRouter(dependencies=[Depends(require_admin)])
 
 
+@router.get("/")
+def list_terminals(db: Session = Depends(get_db)):
+    """Get list of all terminals"""
+    terminals = db.query(Terminal).all()
+    return [
+        {"id": t.id, "name": t.name, "api_key": t.api_key}
+        for t in terminals
+    ]
+
+
 @router.post("/")
 def create_terminal(name: str, db: Session = Depends(get_db)):
     existing = terminal_crud.get_by_name(db, name)
