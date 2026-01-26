@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:11.2
+    container_name: timetracker_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - timetracker_network
+    command: 
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_unicode_ci'
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timetracker_api
+    restart: unless-stopped
+    environment:
+      # Application
+      APP_NAME: ${APP_NAME:-TimeTracker API}
+      ENV: production
+      DEBUG: ${DEBUG:-false}
+      
+      # Database
+      DATABASE_URL: mysql+pymysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}?charset=utf8mb4
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
+      SQL_ECHO: ${SQL_ECHO:-0}
+      
+      # Security
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      
+      # Admin
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      
+      # Terminal
+      TERMINAL_SCAN_COOLDOWN_SECONDS: ${TERMINAL_SCAN_COOLDOWN_SECONDS:-5}
+      
+      # CORS
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - timetracker_network
+    expose:
+      - "8000"
+    volumes:
+      - ./app/static:/app/app/static:ro
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: timetracker_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - api
+    networks:
+      - timetracker_network
+
+networks:
+  timetracker_network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+    driver: local

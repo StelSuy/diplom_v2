@@ -1,116 +1,112 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Environments
-.env
-.venv
-env/
+# Віртуальне середовище
+.venv/
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
+.venv.bak/
 
-# IDEs
+# Налаштування (ВАЖЛИВО!)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# База даних
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Логи
+*.log
+logs/
+*.log.*
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-
-# Logs
-*.log
-logs/
-*.log.*
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Alembic
-alembic.ini.bak
-
-# Temporary files
-*.tmp
-*.temp
-tmp/
-temp/
-
-# OS generated files
 Thumbs.db
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 
-# Project specific
-*.pdf
+# Тимчасові файли
+*.tmp
+*.temp
+tmp/
+temp/
+*.bak
+*.backup
+
+# Backup
+backup/
+backups/
+backup_*.sql
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing / Coverage
+htmlcov/
+.tox/
+.coverage
+.pytest_cache/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.pytype/
+.pyre/
+
+# Docker (секретні файли)
+ssl/
+*.pem
+*.crt
+*.key
+
+# Завантаження
 uploads/
 static/uploads/
 
-# Backup files
-*.bak
-*.backup
-backup/
-backups/
+# Документація (застарілі README)
+*DEPLOYMENT*.md
+*DEPLOY*.md
+*FIX*.md
+*ЧЕКЛИСТ*.md
+*ТЕРМІНОВО*.md
+COMMANDS_CHEATSHEET.md
+QUICKSTART*.md
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Зайві файли
+*.ico
+!favicon.ico
+*.ttf
+fmtTime_fix.js
 
-# Pyre type checker
-.pyre/
+# Static (зайві файли)
+app/static/index[0-9]*.html
 
-# pytype static type analyzer
-.pytype/
+# Alembic
+alembic.ini.bak
 
-# Cython debug symbols
-cython_debug/
+# Cleanup scripts (застарілі)
+cleanup_old_files.bat
+setup_favicon.bat
+clear_cache.bat

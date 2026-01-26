@@ -1,32 +1,24 @@
 # app/db/session.py
-import os
 from typing import Generator
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
-DATABASE_URL = settings.database_url.strip()
-SQL_ECHO = os.getenv("SQL_ECHO", "0") == "1"
-
 
 def _make_engine():
-    url = DATABASE_URL
-
-    # MySQL / MariaDB
+    """Создает engine с настройками из config"""
     return create_engine(
-        url,
-        echo=SQL_ECHO,
+        settings.database_url,
+        echo=settings.sql_echo,
         pool_pre_ping=True,
-        pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),
-        pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
-        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),
+        pool_recycle=settings.db_pool_recycle,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
     )
 
 
 engine = _make_engine()
-
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 print("ENGINE URL:", engine.url)

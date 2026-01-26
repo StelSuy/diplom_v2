@@ -1,8 +1,9 @@
 import logging
 import sys
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -22,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 print("=" * 80)
-print("MAIN.PY LOADED - VERSION 2.0 - SIMPLIFIED MIDDLEWARE")
+print("MAIN.PY LOADED - VERSION 2.1 - WITH FAVICON")
 print("=" * 80)
 
 app = FastAPI(
@@ -34,7 +35,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В production замените на конкретные домены
+    allow_origins=settings.cors_origins,  # Настраивается через .env
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,6 +97,16 @@ if settings.debug:
         response = await call_next(request)
         logger.info(f"<<< {response.status_code}")
         return response
+
+
+# Favicon endpoint
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve favicon."""
+    favicon_path = Path(__file__).parent.parent / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    return JSONResponse(status_code=404, content={"detail": "Favicon not found"})
 
 
 # API Routes

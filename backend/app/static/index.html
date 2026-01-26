@@ -766,16 +766,6 @@ body[data-theme="light"] {
         </div>
 
         <div class="box">
-          <div style="font-weight:950; margin-bottom:8px;">Події (IN/OUT)</div>
-          <table id="eventsTable">
-            <thead>
-              <tr><th>ID</th><th>Dir</th><th>Local</th><th>Terminal</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="box">
           <div style="font-weight:950; margin-bottom:8px;">Дні (План / Факт / Різниця)</div>
           <table id="dailyTable">
             <thead>
@@ -792,6 +782,21 @@ body[data-theme="light"] {
             🟡 open = є IN без OUT • 🔒 auto = автозакриття • ⚠ warn = аномалія • Δ = факт − план
           </div>
         </div>
+        
+        
+        
+        
+        <div class="box">
+          <div style="font-weight:950; margin-bottom:8px;">Події (IN/OUT)</div>
+          <table id="eventsTable">
+            <thead>
+              <tr><th>ID</th><th>Dir</th><th>Local</th><th>Terminal</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+
       </div>
     </div>
   </div>
@@ -938,6 +943,7 @@ body[data-theme="light"] {
       </div>
     </div>
   </div>
+
 <!-- ================= MANUAL ENTRY ================= -->
 <div id="manualEntry" class="tab-content">
   <div class="row">
@@ -967,12 +973,26 @@ body[data-theme="light"] {
             <input id="manualDate" type="date" />
           </div>
           <div>
-            <label>Час (ГГ:ХХ:СС)</label>
-            <input id="manualTime" type="time" step="1" placeholder="14:30:00" />
+            <label>Час входу (ГГ:ХХ:СС)</label>
+            <input id="manualTimeIn" type="time" step="1" placeholder="08:00:00" />
           </div>
         </div>
 
-        <div style="margin-top:10px;">
+        <div class="grid2" style="margin-top:10px;">
+          <div>
+            <label>Час виходу (опціонально)</label>
+            <input id="manualTimeOut" type="time" step="1" placeholder="17:00:00" />
+          </div>
+          <div>
+            <label style="margin-top: 26px;">
+              <input type="checkbox" id="manualAddBothEvents" checked />
+              Додати обидві події (IN і OUT)
+            </label>
+          </div>
+        </div>
+
+        <!-- Показується тільки якщо галочка НЕ встановлена -->
+        <div id="manualSingleEventBox" style="margin-top:10px; display:none;">
           <label>Тип події</label>
           <select id="manualDirection">
             <option value="IN">Вхід (IN)</option>
@@ -980,18 +1000,20 @@ body[data-theme="light"] {
           </select>
         </div>
 
-        <div style="margin-top:10px;">
-          <label>Термінал (опціонально)</label>
-          <select id="manualTerminal">
-            <option value="">— автоматично —</option>
-          </select>
+        <div class="info" style="margin-top:10px; font-size:11px;">
+          💡 <b>Режим "Обидві події":</b> Автоматично створить вхід і вихід за вказані часи.<br>
+          💡 <b>Режим "Одна подія":</b> Створить тільки одну подію (вибраного типу).
         </div>
 
         <div style="margin-top:10px;">
           <label>Коментар / Причина</label>
           <textarea id="manualComment" placeholder="Наприклад: Телефон розряджений, термінал не спрацював..."></textarea>
         </div>
-
+          
+          <div id="manualWarning" class="info" style="margin-top:10px; display:none; background: rgba(255,209,102,0.10); border-color: rgba(255,209,102,0.35);">
+  ⚠️ <span id="manualWarningText"></span>
+        </div>
+        
         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
           <button class="btn" onclick="openManualEntryConfirm()">Додати подію</button>
           <button class="btn secondary" onclick="clearManualForm()">Очистити</button>
@@ -1249,29 +1271,21 @@ body[data-theme="light"] {
   
 function fmtTime(ts) {
   if (!ts) return "";
-
   const s = String(ts).trim();
   
-  // Якщо це вже формат HH:MM або HH:MM:SS - повертаємо як є
-  const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (m) {
-    const hh = m[1], mm = m[2], ss = (m[3] ?? "00");
-    return `${hh}:${mm}:${ss}`;
-  }
-
-  // Якщо це дата/час - показуємо ДАТУ І ЧАС
   const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "";
+  if (!Number.isNaN(d.getTime())) {
+    // Показуємо ДАТУ І ЧАС
+    return d.toLocaleString('uk-UA', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
   
-  // ⬇️ ТУТ ВИПРАВЛЕННЯ - показуємо дату і час
-  return d.toLocaleString('uk-UA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+  const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) return `${m[1]}:${m[2]}:${m[3] ?? "00"}`;
+  
+  return "";
 }
 
   function toLocalMinutesAny(value) {
@@ -1291,14 +1305,15 @@ function fmtTime(ts) {
     return d.getHours() * 60 + d.getMinutes();
   }
   
-  function hhmmToMinutes(hhmm) {
-    const s = String(hhmm || "").trim();
-    const m = s.match(/^(\d{2}):(\d{2})$/);
-    if (!m) return null;
-    const hh = Number(m[1]), mm = Number(m[2]);
-    if (hh > 23 || mm > 59) return null;
-    return hh * 60 + mm;
-  }
+    function hhmmToMinutes(hhmm) {
+      const s = String(hhmm || "").trim();
+      // Підтримка HH:MM та HH:MM:SS
+      const m = s.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m) return null;
+      const hh = Number(m[1]), mm = Number(m[2]);
+      if (hh > 23 || mm > 59) return null;
+      return hh * 60 + mm;
+    }
   
   function clamp0(n){ return Math.max(0, n); }
   
@@ -1703,7 +1718,10 @@ function scheduleCellText(it) {
       const factWorked = (r.worked_minutes !== undefined && r.worked_minutes !== null) ? r.worked_minutes : null;
 
       const inVal = r.first_in_local || null;
-      const outVal = (!open) ? (r.last_out_local || null) : null;
+        const today = ymd(new Date());
+        const isToday = (day === today);
+        const shouldShowOut = !open || !isToday;
+        const outVal = shouldShowOut ? (r.last_out_local || null) : null;
 
       const inLabel = inVal ? fmtTime(inVal) : "";
       const outLabel = outVal ? fmtTime(outVal) : "";
@@ -1869,7 +1887,26 @@ function scheduleCellText(it) {
     return out;
   }
 
-  // ===== MANUAL ENTRY =====
+// ===== MANUAL ENTRY - UPDATED =====
+
+// Показати/сховати поле вибору типу події
+function toggleManualEventType() {
+  const addBoth = document.getElementById("manualAddBothEvents").checked;
+  const singleBox = document.getElementById("manualSingleEventBox");
+  if (singleBox) {
+    singleBox.style.display = addBoth ? "none" : "block";
+  }
+}
+
+// Додати слухач на галочку
+document.addEventListener("DOMContentLoaded", () => {
+  const checkbox = document.getElementById("manualAddBothEvents");
+  if (checkbox) {
+    checkbox.addEventListener("change", toggleManualEventType);
+    toggleManualEventType(); // Ініціалізація
+  }
+});
+
 let manualEmployeesFiltered = [];
 let manualPendingData = null;
 
@@ -1884,6 +1921,8 @@ function manualApplyFilter() {
 
 function manualRenderEmpSelect() {
   const sel = document.getElementById("manualEmpSelect");
+  if (!sel) return;
+  
   const keep = sel.value;
   sel.innerHTML = `<option value="">— оберіть співробітника —</option>`;
   
@@ -1904,44 +1943,26 @@ async function manualInitFilters() {
   // Встановлюємо поточну дату і час
   const now = new Date();
   const dateEl = document.getElementById("manualDate");
-  const timeEl = document.getElementById("manualTime");
+  const timeInEl = document.getElementById("manualTimeIn");
+  const timeOutEl = document.getElementById("manualTimeOut");
   
   if (dateEl) {
     dateEl.value = ymd(now);
   }
   
-  if (timeEl) {
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-    timeEl.value = `${hh}:${mm}:${ss}`;
+  if (timeInEl) {
+    timeInEl.value = "08:00:00";
   }
   
-  // Завантажуємо список терміналів
-  await loadTerminalsForManual();
+  if (timeOutEl) {
+    timeOutEl.value = "17:00:00";
+  }
+  
+  // Ініціалізація видимості полів
+  toggleManualEventType();
   
   // Завантажуємо останні події
   await loadManualEvents();
-}
-
-async function loadTerminalsForManual() {
-  try {
-    const res = await apiFetch("/terminals/");
-    if (!res.ok) return;
-    
-    const terminals = await res.json();
-    const sel = document.getElementById("manualTerminal");
-    sel.innerHTML = `<option value="">— автоматично —</option>`;
-    
-    terminals.forEach(t => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = `${t.location} (${t.identifier})`;
-      sel.appendChild(opt);
-    });
-  } catch (e) {
-    console.warn("Не вдалося завантажити термінали:", e);
-  }
 }
 
 function clearManualForm() {
@@ -1952,13 +1973,12 @@ function clearManualForm() {
   const now = new Date();
   document.getElementById("manualDate").value = ymd(now);
   
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  document.getElementById("manualTime").value = `${hh}:${mm}:${ss}`;
-  
+  document.getElementById("manualTimeIn").value = "07:00:00";
+  document.getElementById("manualTimeOut").value = "15:00:00";
+  document.getElementById("manualAddBothEvents").checked = true;
   document.getElementById("manualDirection").value = "IN";
-  document.getElementById("manualTerminal").value = "";
+  
+  toggleManualEventType();
   
   const infoEl = document.getElementById("manualInfo");
   const errorEl = document.getElementById("manualError");
@@ -1969,9 +1989,10 @@ function clearManualForm() {
 function openManualEntryConfirm() {
   const empId = document.getElementById("manualEmpSelect").value;
   const dateVal = document.getElementById("manualDate").value;
-  const timeVal = document.getElementById("manualTime").value;
+  const timeInVal = document.getElementById("manualTimeIn").value;
+  const timeOutVal = document.getElementById("manualTimeOut").value;
+  const addBoth = document.getElementById("manualAddBothEvents").checked;
   const direction = document.getElementById("manualDirection").value;
-  const terminalId = document.getElementById("manualTerminal").value;
   const comment = document.getElementById("manualComment").value.trim();
   
   const errorEl = document.getElementById("manualError");
@@ -1989,8 +2010,8 @@ function openManualEntryConfirm() {
     return;
   }
   
-  if (!timeVal) {
-    errorEl.textContent = "Вкажіть час";
+  if (!timeInVal) {
+    errorEl.textContent = "Вкажіть час входу";
     errorEl.style.display = "block";
     return;
   }
@@ -2001,6 +2022,25 @@ function openManualEntryConfirm() {
     return;
   }
   
+  // Перевірка: якщо галочка встановлена, час виходу обов'язковий
+  if (addBoth && !timeOutVal) {
+    errorEl.textContent = "Вкажіть час виходу або зніміть галочку";
+    errorEl.style.display = "block";
+    return;
+  }
+  
+  // Перевірка: час виходу має бути пізніше часу входу
+  if (addBoth && timeOutVal) {
+    const timeIn = hhmmToMinutes(timeInVal);
+    const timeOut = hhmmToMinutes(timeOutVal);
+    
+    if (timeOut <= timeIn) {
+      errorEl.textContent = "Час виходу має бути пізніше часу входу";
+      errorEl.style.display = "block";
+      return;
+    }
+  }
+  
   // Знаходимо співробітника
   const employee = _employeesCache.find(e => e.id == empId);
   if (!employee) {
@@ -2009,26 +2049,40 @@ function openManualEntryConfirm() {
     return;
   }
   
-  // Формуємо timestamp
-  const timestamp = `${dateVal}T${timeVal}`;
-  
-  // Зберігаємо дані для відправки
+  // Формуємо дані для збереження
   manualPendingData = {
     employee_id: parseInt(empId),
-    timestamp: timestamp,
-    direction: direction,
-    terminal_id: terminalId ? parseInt(terminalId) : null,
+    date: dateVal,
+    time_in: timeInVal,
+    time_out: addBoth ? timeOutVal : null,
+    direction: addBoth ? null : direction, // Тип події тільки якщо одна подія
     comment: comment,
   };
   
   // Показуємо деталі в модалці
   const detailsEl = document.getElementById("manualConfirmDetails");
-  detailsEl.textContent =
-    `Співробітник: ${employee.full_name} (${employee.nfc_uid})\n` +
-    `Дата: ${dateVal}\n` +
-    `Час: ${timeVal}\n` +
-    `Тип: ${direction === "IN" ? "Вхід" : "Вихід"}\n` +
-    `Коментар: ${comment}`;
+  let detailsText = `Співробітник: ${employee.full_name} (${employee.nfc_uid})\n` +
+    `Дата: ${dateVal}\n`;
+  
+  if (addBoth) {
+    detailsText += `Час входу: ${timeInVal}\n`;
+    detailsText += `Час виходу: ${timeOutVal}\n`;
+    
+    // Розрахунок тривалості
+    const timeIn = hhmmToMinutes(timeInVal);
+    const timeOut = hhmmToMinutes(timeOutVal);
+    const duration = timeOut - timeIn;
+    const hours = Math.floor(duration / 60);
+    const mins = duration % 60;
+    detailsText += `Тривалість: ${hours}г ${mins}хв\n`;
+  } else {
+    detailsText += `Тип події: ${direction === 'IN' ? 'ВХІД' : 'ВИХІД'}\n`;
+    detailsText += `Час: ${timeInVal}\n`;
+  }
+  
+  detailsText += `Коментар: ${comment}`;
+  
+  detailsEl.textContent = detailsText;
   
   // Очищуємо поля авторизації
   document.getElementById("manualConfirmLogin").value = "";
@@ -2083,34 +2137,126 @@ async function submitManualEntry() {
       throw new Error("Не вдалося отримати токен авторизації");
     }
     
-    // 2. Створюємо подію
-    const eventRes = await fetch(`${API_ROOT}/events/manual`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${tempToken}`
-      },
-      body: JSON.stringify(manualPendingData)
-    });
+    // 2. Перевірити чи є події на цю дату
+    const checkRes = await fetch(
+      `${API_ROOT}/events/manual/date/${manualPendingData.employee_id}/${manualPendingData.date}`,
+      {
+        headers: { "Authorization": `Bearer ${tempToken}` }
+      }
+    );
     
-    if (!eventRes.ok) {
-      const errText = await eventRes.text().catch(() => "");
-      throw new Error(`Помилка створення події: ${errText || eventRes.status}`);
+    let existingEvents = [];
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      existingEvents = checkData.events || [];
     }
     
-    const result = await eventRes.json();
+    // 3. Визначити які події треба видалити
+    const eventsToDelete = [];
     
-    // Успіх!
+    if (manualPendingData.time_out) {
+      // Режим "Обидві події" - видалити всі існуючі IN і OUT
+      existingEvents.forEach(e => {
+        if (e.direction === "IN" || e.direction === "OUT") {
+          eventsToDelete.push(e.id);
+        }
+      });
+    } else {
+      // Режим "Одна подія" - видалити тільки того ж типу
+      const targetDirection = manualPendingData.direction;
+      existingEvents.forEach(e => {
+        if (e.direction === targetDirection) {
+          eventsToDelete.push(e.id);
+        }
+      });
+    }
+    
+    // 4. Видалити старі події
+    for (const eventId of eventsToDelete) {
+      const delRes = await fetch(`${API_ROOT}/events/manual/${eventId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${tempToken}` }
+      });
+      
+      if (!delRes.ok) {
+        console.warn(`Не вдалося видалити подію ${eventId}`);
+      }
+    }
+    
+    // 5. Створити нові події
+    const eventsToCreate = [];
+    
+    if (manualPendingData.time_out) {
+      // Режим "Обидві події"
+      eventsToCreate.push({
+        employee_id: manualPendingData.employee_id,
+        timestamp: `${manualPendingData.date}T${manualPendingData.time_in}`,
+        direction: "IN",
+        terminal_id: null,
+        comment: manualPendingData.comment
+      });
+      
+      eventsToCreate.push({
+        employee_id: manualPendingData.employee_id,
+        timestamp: `${manualPendingData.date}T${manualPendingData.time_out}`,
+        direction: "OUT",
+        terminal_id: null,
+        comment: manualPendingData.comment
+      });
+    } else {
+      // Режим "Одна подія"
+      eventsToCreate.push({
+        employee_id: manualPendingData.employee_id,
+        timestamp: `${manualPendingData.date}T${manualPendingData.time_in}`,
+        direction: manualPendingData.direction,
+        terminal_id: null,
+        comment: manualPendingData.comment
+      });
+    }
+    
+    // 6. Відправити нові події
+    const results = [];
+    for (const eventData of eventsToCreate) {
+      const eventRes = await fetch(`${API_ROOT}/events/manual`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tempToken}`
+        },
+        body: JSON.stringify(eventData)
+      });
+      
+      if (!eventRes.ok) {
+        const errText = await eventRes.text().catch(() => "");
+        throw new Error(`Помилка створення події ${eventData.direction}: ${errText || eventRes.status}`);
+      }
+      
+      const result = await eventRes.json();
+      results.push(result);
+    }
+    
+    // 7. Успіх!
     closeManualConfirm();
     
     const infoEl = document.getElementById("manualInfo");
-    infoEl.textContent = `✅ Подію успішно додано! ID: ${result.id}`;
+    let message = "";
+    
+    if (eventsToDelete.length > 0) {
+      message += `🔄 Замінено ${eventsToDelete.length} старих подій. `;
+    }
+    
+    if (results.length === 1) {
+      const dir = results[0].direction === 'IN' ? 'входу' : 'виходу';
+      message += `✅ Подію ${dir} успішно додано! ID: ${results[0].id}`;
+    } else {
+      message += `✅ Події успішно додано! IN (ID: ${results[0].id}), OUT (ID: ${results[1].id})`;
+    }
+    
+    infoEl.textContent = message;
     infoEl.style.display = "block";
     
-    // Очищуємо форму
+    // 8. Очистити форму і оновити список
     clearManualForm();
-    
-    // Оновлюємо список подій
     await loadManualEvents();
     
   } catch (e) {
@@ -2129,6 +2275,8 @@ async function loadManualEvents() {
     
     const events = await res.json();
     const tbody = document.querySelector("#manualEventsTable tbody");
+    if (!tbody) return;
+    
     tbody.innerHTML = "";
     
     if (!events || events.length === 0) {
@@ -3136,6 +3284,86 @@ async function postScheduleCellPB(payload) {
       setStatus(false, "Не авторизовано");
     }
   });
+  
+  
+  async function checkExistingEvents() {
+  const empId = document.getElementById("manualEmpSelect").value;
+  const dateVal = document.getElementById("manualDate").value;
+  const addBoth = document.getElementById("manualAddBothEvents").checked;
+  const direction = document.getElementById("manualDirection").value;
+  
+  const warningEl = document.getElementById("manualWarning");
+  const warningText = document.getElementById("manualWarningText");
+  
+  if (!empId || !dateVal) {
+    warningEl.style.display = "none";
+    return;
+  }
+  
+  try {
+    const token = getToken();
+    if (!token) return;
+    
+    const res = await fetch(
+      `${API_ROOT}/events/manual/date/${empId}/${dateVal}`,
+      { headers: { "Authorization": `Bearer ${token}` } }
+    );
+    
+    if (!res.ok) return;
+    
+    const data = await res.json();
+    const existing = data.events || [];
+    
+    if (existing.length === 0) {
+      warningEl.style.display = "none";
+      return;
+    }
+    
+    // Визначити що буде замінено
+    let toReplace = [];
+    
+    if (addBoth) {
+      const hasIn = existing.some(e => e.direction === "IN");
+      const hasOut = existing.some(e => e.direction === "OUT");
+      if (hasIn) toReplace.push("ВХІД");
+      if (hasOut) toReplace.push("ВИХІД");
+    } else {
+      const hasTarget = existing.some(e => e.direction === direction);
+      if (hasTarget) {
+        toReplace.push(direction === "IN" ? "ВХІД" : "ВИХІД");
+      }
+    }
+    
+    if (toReplace.length > 0) {
+      warningText.textContent = `На цю дату вже є події: ${toReplace.join(" та ")}. Вони будуть замінені новими.`;
+      warningEl.style.display = "block";
+    } else {
+      warningEl.style.display = "none";
+    }
+    
+  } catch (e) {
+    console.warn("Помилка перевірки існуючих подій:", e);
+    warningEl.style.display = "none";
+  }
+}
+
+// Додати слухачі
+document.addEventListener("DOMContentLoaded", () => {
+  const empSelect = document.getElementById("manualEmpSelect");
+  const dateInput = document.getElementById("manualDate");
+  const bothCheckbox = document.getElementById("manualAddBothEvents");
+  const directionSelect = document.getElementById("manualDirection");
+  
+  if (empSelect) empSelect.addEventListener("change", checkExistingEvents);
+  if (dateInput) dateInput.addEventListener("change", checkExistingEvents);
+  if (bothCheckbox) bothCheckbox.addEventListener("change", checkExistingEvents);
+  if (directionSelect) directionSelect.addEventListener("change", checkExistingEvents);
+});
+  
+  
+  
+  
+  
 </script>
 
 </body>
