@@ -33,13 +33,24 @@ app = FastAPI(
 )
 
 # CORS Configuration
+# Якщо cors_origins порожній - дозволяємо тільки same-origin
+cors_origins = settings.cors_origins if settings.cors_origins else ["null"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,  # Настраивается через .env
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Логування CORS в debug режимі
+if settings.app_debug:
+    logger.info(f"CORS origins: {cors_origins}")
+elif settings.cors_origins:
+    logger.info(f"CORS enabled for {len(settings.cors_origins)} origin(s)")
+else:
+    logger.warning("CORS: No origins configured (same-origin only)")
 
 
 @app.on_event("startup")
