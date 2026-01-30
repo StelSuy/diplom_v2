@@ -1,94 +1,90 @@
+"""
+FastAPI application entry point.
+"""
 import logging
-import sys
 from pathlib import Path
 
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from app.core.config import settings
 from app.api.router import api_router
-from app.db.session import SessionLocal
+from app.core.config import settings
+from app.core.logging import setup_logging
 from app.core.seed import seed_demo_data
+from app.db.session import SessionLocal
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO if settings.debug else logging.WARNING,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
+# Setup logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
-print("=" * 80)
-print("MAIN.PY LOADED - VERSION 2.1 - WITH FAVICON")
-print("=" * 80)
-
+# Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
     debug=settings.debug,
+    docs_url="/docs" if settings.is_development else None,
+    redoc_url="/redoc" if settings.is_development else None,
 )
 
 # CORS Configuration
-# Якщо cors_origins порожній - дозволяємо тільки same-origin
-cors_origins = settings.cors_origins if settings.cors_origins else ["null"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Логування CORS в debug режимі
-if settings.app_debug:
-    logger.info(f"CORS origins: {cors_origins}")
-elif settings.cors_origins:
-    logger.info(f"CORS enabled for {len(settings.cors_origins)} origin(s)")
-else:
-    logger.warning("CORS: No origins configured (same-origin only)")
-
 
 @app.on_event("startup")
-def on_startup():
-    """Инициализация при старте приложения."""
+async def on_startup():
+    """Initialize application on startup."""
     logger.info(f"Starting {settings.app_name} in {settings.env} mode")
+    logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"CORS origins: {settings.cors_origins}")
     
+    # Seed demo data
     try:
         db = SessionLocal()
         try:
             created = seed_demo_data(db)
-            logger.info(f"Seed demo data: {created}")
+            if created:
+                logger.info("Demo data seeded successfully")
         finally:
             db.close()
     except (OperationalError, ProgrammingError) as e:
-        logger.warning(f"Seed skipped (DB not ready): {e}")
+        logger.warning(f"Database not ready for seeding: {e}")
     except Exception as e:
-        logger.exception(f"Seed failed but server continues: {e}")
+        logger.exception(f"Failed to seed data: {e}")
     
+    # Debug: Log registered routes
     if settings.debug:
-        _debug_routes()
+        logger.info("=== Registered Routes ===")
+        for route in app.routes:
+            if hasattr(route, "methods") and hasattr(route, "path"):
+                methods = ",".join(sorted(route.methods))
+                logger.info(f"{methods:15} {route.path}")
 
 
-def _debug_routes():
-    """Вывод всех зарегистрированных маршрутов."""
-    logger.info("\n=== REGISTERED ROUTES ===")
-    for r in app.routes:
-        if hasattr(r, "methods") and hasattr(r, "path"):
-            methods = ",".join(sorted(r.methods))
-            logger.info(f"{methods:15} {r.path}")
-    logger.info("=== END ROUTES ===\n")
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Cleanup on application shutdown."""
+    logger.info("Shutting down application")
 
 
 # Exception Handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Глобальный обработчик исключений."""
-    logger.exception(f"Unhandled exception on {request.method} {request.url.path}")
+    """
+    Global exception handler for unhandled errors.
+    Logs the error and returns a generic error response.
+    """
+    logger.exception(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}"
+    )
     
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -96,54 +92,80 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": "Internal server error",
             "path": str(request.url.path),
             "method": request.method,
-        }
+        },
     )
 
 
-# Simple Request Logging Middleware
-if settings.debug:
+# Request Logging Middleware (Development only)
+if settings.is_development:
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
-        logger.info(f">>> {request.method} {request.url.path}")
+        """Log all HTTP requests in development mode."""
+        logger.debug(f">>> {request.method} {request.url.path}")
         response = await call_next(request)
-        logger.info(f"<<< {response.status_code}")
+        logger.debug(f"<<< {response.status_code}")
         return response
 
 
-# Favicon endpoint
+# Favicon Endpoint
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Serve favicon."""
+    """Serve favicon.ico if it exists."""
     favicon_path = Path(__file__).parent.parent / "favicon.ico"
     if favicon_path.exists():
         return FileResponse(favicon_path)
-    return JSONResponse(status_code=404, content={"detail": "Favicon not found"})
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": "Favicon not found"}
+    )
 
 
-# API Routes
-app.include_router(api_router, prefix="/api")
-
-# Admin Panel
-app.mount("/admin", StaticFiles(directory="app/static", html=True), name="admin")
-
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint."""
+# Health Check Endpoint
+@app.get("/health", tags=["System"])
+async def health_check():
+    """
+    Health check endpoint for monitoring.
+    Returns application status and version.
+    """
     return {
         "status": "ok",
         "app": settings.app_name,
         "env": settings.env,
-        "version": "1.0.0"
-    }
-
-
-@app.get("/")
-def root():
-    """Root endpoint."""
-    return {
-        "message": "TimeTracker API",
         "version": "1.0.0",
-        "docs": "/docs",
-        "admin": "/admin"
     }
+
+
+# Root Endpoint
+@app.get("/", tags=["System"])
+async def root():
+    """
+    Root endpoint with API information.
+    """
+    response = {
+        "message": settings.app_name,
+        "version": "1.0.0",
+        "status": "running",
+        "environment": settings.env,
+    }
+    
+    if settings.is_development:
+        response.update({
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "admin": "/admin",
+        })
+    
+    return response
+
+
+# Include API Router
+app.include_router(api_router, prefix="/api")
+
+# Mount Admin Static Files
+try:
+    static_path = Path(__file__).parent / "static"
+    if static_path.exists():
+        app.mount("/admin", StaticFiles(directory=str(static_path), html=True), name="admin")
+        logger.info(f"Admin panel mounted at /admin")
+except Exception as e:
+    logger.warning(f"Failed to mount admin static files: {e}")

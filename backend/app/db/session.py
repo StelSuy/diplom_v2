@@ -1,68 +1,108 @@
-# app/db/session.py
-from typing import Generator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+"""
+Database session management and engine configuration.
+"""
 import logging
+from typing import Generator
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import NullPool, QueuePool
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-def _make_engine():
+def _create_engine() -> Engine:
     """
-    Створює SQLAlchemy engine з production-готовими налаштуваннями.
+    Create and configure SQLAlchemy engine.
     
-    Використовує:
-    - computed_database_url (автоматична збірка з компонентів або прямий URL)
-    - pool settings для оптимальної роботи з MySQL
-    - pool_pre_ping для перевірки з'єднань
+    Returns:
+        Configured SQLAlchemy engine
     """
-    db_url = settings.computed_database_url
+    database_url = settings.database_url
     
-    # Логування (без паролю в production)
-    if settings.app_debug:
-        logger.info(f"Connecting to database: {db_url}")
+    # Engine configuration
+    engine_kwargs = {
+        "echo": settings.sql_echo,
+        "pool_pre_ping": True,  # Verify connections before using
+        "pool_recycle": settings.db_pool_recycle,
+    }
+    
+    # Use connection pooling for MySQL/PostgreSQL, NullPool for SQLite
+    if "sqlite" in database_url:
+        engine_kwargs["poolclass"] = NullPool
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+        logger.warning("Using SQLite - not recommended for production")
     else:
-        # Приховуємо пароль в production
-        safe_url = db_url.split('@')[1] if '@' in db_url else db_url
-        logger.info(f"Connecting to database: ...@{safe_url}")
+        engine_kwargs["poolclass"] = QueuePool
+        engine_kwargs["pool_size"] = settings.db_pool_size
+        engine_kwargs["max_overflow"] = settings.db_max_overflow
     
-    return create_engine(
-        db_url,
-        echo=settings.sql_echo,
-        pool_pre_ping=True,  # Перевірка з'єднань перед використанням
-        pool_recycle=settings.db_pool_recycle,
-        pool_size=settings.db_pool_size,
-        max_overflow=settings.db_max_overflow,
-        # Додаткові production-налаштування
-        pool_timeout=30,  # Timeout для отримання з'єднання з пулу
-        connect_args={
-            "connect_timeout": 10  # Timeout для підключення до БД
-        }
-    )
+    engine = create_engine(database_url, **engine_kwargs)
+    
+    # Log engine configuration
+    logger.info(f"Database engine created: {engine.url.drivername}")
+    logger.info(f"Pool size: {engine.pool.size() if hasattr(engine.pool, 'size') else 'N/A'}")
+    
+    return engine
 
 
-try:
-    engine = _make_engine()
-    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    logger.info("Database engine created successfully")
-except Exception as e:
-    logger.error(f"Failed to create database engine: {e}")
-    raise
+# Create global engine instance
+engine = _create_engine()
+
+# Create session factory
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    expire_on_commit=False,
+)
 
 
+# Database session dependency
 def get_db() -> Generator[Session, None, None]:
     """
-    Database session dependency для FastAPI.
+    FastAPI dependency that provides a database session.
     
-    Usage:
-        @app.get("/endpoint")
-        def endpoint(db: Session = Depends(get_db)):
-            ...
+    Yields:
+        SQLAlchemy session
+        
+    Example:
+        @app.get("/users")
+        def get_users(db: Session = Depends(get_db)):
+            return db.query(User).all()
     """
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
+
+
+# Event listeners for connection handling
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """Enable foreign keys for SQLite connections."""
+    if "sqlite" in str(engine.url):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
+@event.listens_for(Engine, "checkout")
+def receive_checkout(dbapi_conn, connection_record, connection_proxy):
+    """Log when connection is checked out from pool (debug only)."""
+    if settings.debug and settings.sql_echo:
+        logger.debug("Connection checked out from pool")
+
+
+@event.listens_for(Engine, "checkin")
+def receive_checkin(dbapi_conn, connection_record):
+    """Log when connection is returned to pool (debug only)."""
+    if settings.debug and settings.sql_echo:
+        logger.debug("Connection returned to pool")

@@ -1,112 +1,114 @@
+# ===========================================
 # Python
+# ===========================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
 
-# Віртуальне середовище
-.venv/
+# ===========================================
+# Virtual Environment
+# ===========================================
 venv/
 env/
+.venv/
 ENV/
-.venv.bak/
 
-# Налаштування (ВАЖЛИВО!)
+# ===========================================
+# Environment & Secrets
+# ===========================================
 .env
 .env.local
 .env.production
 .env.*.local
+*.pem
+*.key
+*.crt
 
-# База даних
-*.db
-*.sqlite
-*.sqlite3
-*.sql
+# Keep examples
+!.env.example
+!.env.production.example
 
-# Логи
-*.log
-logs/
-*.log.*
-
-# IDE
+# ===========================================
+# IDEs
+# ===========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# ===========================================
+# OS Generated
+# ===========================================
 .DS_Store
-Thumbs.db
 .DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
+Thumbs.db
 ehthumbs.db
 
-# Тимчасові файли
-*.tmp
-*.temp
-tmp/
-temp/
-*.bak
-*.backup
+# ===========================================
+# Logs
+# ===========================================
+*.log
+logs/
+*.log.*
 
-# Backup
-backup/
-backups/
-backup_*.sql
+# ===========================================
+# Database
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# Testing / Coverage
+# ===========================================
+# Testing
+# ===========================================
+.pytest_cache/
+.coverage
+.coverage.*
 htmlcov/
 .tox/
-.coverage
-.pytest_cache/
 .hypothesis/
+coverage.xml
+*.cover
 
-# Type checking
-.mypy_cache/
-.pytype/
-.pyre/
-
-# Docker (секретні файли)
+# ===========================================
+# Docker
+# ===========================================
 ssl/
-*.pem
-*.crt
-*.key
+backups/*.sql
 
-# Завантаження
+# ===========================================
+# Project Specific
+# ===========================================
+*.pdf
 uploads/
 static/uploads/
+*.bak
+*.backup
+tmp/
+temp/
 
-# Документація (застарілі README)
-*DEPLOYMENT*.md
-*DEPLOY*.md
-*FIX*.md
-*ЧЕКЛИСТ*.md
-*ТЕРМІНОВО*.md
-COMMANDS_CHEATSHEET.md
-QUICKSTART*.md
-
-# Зайві файли
-*.ico
-!favicon.ico
-*.ttf
-fmtTime_fix.js
-
-# Static (зайві файли)
-app/static/index[0-9]*.html
-
+# ===========================================
 # Alembic
+# ===========================================
 alembic.ini.bak
 
-# Cleanup scripts (застарілі)
-cleanup_old_files.bat
-setup_favicon.bat
-clear_cache.bat
+# ===========================================
+# mypy
+# ===========================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===========================================
+# Keep Important Files
+# ===========================================
+!favicon.ico
+!README.md

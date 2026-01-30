@@ -32,23 +32,16 @@ def to_warsaw(dt: datetime) -> datetime:
     return dt.astimezone(WARSAW)
 
 
-def to_utc(dt: datetime, assume_tz: ZoneInfo = WARSAW) -> datetime:
+def to_utc(dt: datetime) -> datetime:
     """
     Конвертує будь-який datetime в UTC.
-    
-    Args:
-        dt: datetime для конверсії
-        assume_tz: timezone для naive datetime (default: Europe/Warsaw)
-    
-    Returns:
-        UTC datetime
+    - naive datetime -> вважається що це UTC
+    - aware datetime -> конвертується в UTC
     """
     if dt.tzinfo is None:
-        # Для naive datetime використовуємо assume_tz
-        dt = dt.replace(tzinfo=assume_tz)
+        return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
 
 def local_date_str(dt: datetime) -> str:
-    """Конвертує datetime в локальну дату (YYYY-MM-DD)"""
     return to_warsaw(dt).date().isoformat()

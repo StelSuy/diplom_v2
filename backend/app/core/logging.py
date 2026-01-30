@@ -1,36 +1,52 @@
-# app/core/logging.py
+"""
+Centralized logging configuration.
+"""
 import logging
 import sys
-from typing import Any
+from typing import Optional
 
 from app.core.config import settings
 
 
-def setup_logging():
+def setup_logging(log_level: Optional[str] = None) -> logging.Logger:
     """
-    Настройка логирования для приложения.
-    """
-    log_level = logging.DEBUG if settings.debug else logging.INFO
+    Configure application-wide logging.
     
-    # Формат логов
-    log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)d - %(message)s"
+    Args:
+        log_level: Override default log level from settings
+        
+    Returns:
+        Root logger instance
+    """
+    level_name = log_level or settings.log_level
+    level = getattr(logging, level_name.upper(), logging.INFO)
+    
+    # Log format
+    log_format = "%(asctime)s [%(levelname)-8s] %(name)s:%(lineno)d - %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
     
-    # Основной handler
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter(log_format, date_format))
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter(log_format, date_format))
     
-    # Корневой logger
+    # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(log_level)
-    root_logger.addHandler(handler)
+    root_logger.setLevel(level)
     
-    # Отключаем лишний вывод от библиотек
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("multipart").setLevel(logging.WARNING)
+    # Remove existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+    root_logger.addHandler(console_handler)
     
-    # Логи SQLAlchemy только при явном SQL_ECHO
-    if not settings.debug:
+    # Suppress noisy libraries in production
+    if settings.is_production:
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("multipart").setLevel(logging.WARNING)
+        logging.getLogger("watchfiles").setLevel(logging.WARNING)
+    
+    # SQLAlchemy logging
+    if settings.sql_echo:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    else:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     
     return root_logger
@@ -38,6 +54,12 @@ def setup_logging():
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Получить logger с заданным именем.
+    Get a logger instance for a specific module.
+    
+    Args:
+        name: Logger name (typically __name__)
+        
+    Returns:
+        Logger instance
     """
     return logging.getLogger(name)
