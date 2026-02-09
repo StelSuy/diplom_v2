@@ -7,9 +7,7 @@ from app.crud import employee as employee_crud
 from app.crud import terminal as terminal_crud
 from app.crud import event as event_crud
 from app.models.terminal import Terminal
-
 from app.api.deps import get_current_terminal
-from app.models.terminal import Terminal
 
 
 router = APIRouter()

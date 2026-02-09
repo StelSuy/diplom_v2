@@ -643,15 +643,63 @@ body[data-theme="light"] {
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="openTab('employees')">Співробітники</button>
+  <button class="tab-btn active" onclick="openTab('dashboard')">Головна</button>
+  <button class="tab-btn" onclick="openTab('employees')">Співробітники</button>
   <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
   <button class="tab-btn" onclick="openTab('planBuilder')">Конструктор графіка</button>
   <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
   <button class="tab-btn" onclick="openTab('manualEntry')">Ручний ввід</button>
+  <button class="tab-btn" onclick="openTab('terminalsTab')">Термінали</button>
 </div>
 
+  <!-- ================= DASHBOARD ================= -->
+  <div id="dashboard" class="tab-content active">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="font-weight:950; font-size:16px;">Останні сканування</div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input id="dashDate" type="date" style="width:auto;" />
+              <button class="btn" onclick="loadDashboard()">Показати</button>
+              <button class="btn secondary" onclick="dashToday()">Сьогодні</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:14px; margin-top:12px; flex-wrap:wrap; align-items:center;" id="dashSummary">
+            <div class="status-pill"><span class="dot"></span> <span id="dashCount">Завантаження…</span></div>
+            <div class="status-pill" id="wsIndicator" title="WebSocket live-оновлення"><span class="dot"></span> <span>Connecting…</span></div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <input id="dashSearch" placeholder="Пошук: ПІБ, напрямок, термінал…" style="flex:1; min-width:240px;" oninput="dashApplyFilter()" />
+            <select id="dashDirFilter" style="width:auto;" onchange="dashApplyFilter()">
+              <option value="">Всі</option>
+              <option value="IN">Тільки IN</option>
+              <option value="OUT">Тільки OUT</option>
+            </select>
+          </div>
+        </div>
+
+        <table id="dashTable">
+          <thead>
+            <tr>
+              <th>Час</th>
+              <th>Напрямок</th>
+              <th>Співробітник</th>
+              <th>Посада</th>
+              <th>Термінал</th>
+              <th>Коментар</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= EMPLOYEES ================= -->
-  <div id="employees" class="tab-content active">
+  <div id="employees" class="tab-content">
     <div class="row">
       <div class="col">
         <div class="box">
@@ -1046,6 +1094,82 @@ body[data-theme="light"] {
     </div>
   </div>
 </div>
+  <!-- ================= TERMINALS ================= -->
+  <div id="terminalsTab" class="tab-content">
+    <div class="row">
+      <div class="col">
+        <div class="box">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="font-weight:950;">Термінали</div>
+            <button class="btn secondary" onclick="loadTerminals()">Оновити</button>
+          </div>
+          <div class="muted" style="margin-top:6px;">
+            API-ключ (X-Terminal-Key) потрібно ввести в налаштування Android-терміналу (довге натискання на заголовок).
+          </div>
+
+          <table id="terminalsTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Назва</th>
+                <th>API-ключ</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="box">
+          <div style="font-weight:950; margin-bottom:8px;">Створити новий термінал</div>
+
+          <label>Назва терміналу</label>
+          <input id="newTerminalName" placeholder="Наприклад: Вхід_1, Склад_2" />
+
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" onclick="createTerminal()">Створити</button>
+          </div>
+
+          <div id="terminalInfo" class="info" style="margin-top:10px; display:none;"></div>
+          <div id="terminalError" class="error" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ROTATE KEY CONFIRM ================= -->
+  <div id="rotateKeyBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Зміна API-ключа терміналу</div>
+        <button class="btn secondary" onclick="closeRotateKeyConfirm()">Закрити</button>
+      </div>
+      <div class="modal-body">
+        <div class="info" style="margin-bottom:12px; background: rgba(255,209,102,0.10); border-color: rgba(255,209,102,0.35);">
+          <strong>Увага!</strong> Після зміни ключа старий перестане працювати.<br>
+          Потрібно буде оновити ключ на Android-терміналі.
+          <div id="rotateKeyDetails" style="margin-top:8px; font-weight:900;"></div>
+        </div>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+          <div style="font-weight:900; margin-bottom:8px;">Повторна авторизація адміністратора</div>
+
+          <label>Логін</label>
+          <input id="rotateKeyLogin" autocomplete="username" />
+
+          <label>Пароль</label>
+          <input id="rotateKeyPassword" type="password" autocomplete="current-password" />
+        </div>
+
+        <div id="rotateKeyError" class="error"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" onclick="closeRotateKeyConfirm()">Скасувати</button>
+        <button class="btn" onclick="submitRotateKey()">Підтвердити і змінити</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= LOGIN ================= -->
   <div id="loginBackdrop" class="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true">
@@ -1251,6 +1375,9 @@ body[data-theme="light"] {
         if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
       });
     
+      if (tabId === 'dashboard') {
+        loadDashboard();
+      }
       if (tabId === 'planBuilder') {
         pbInit();
       }
@@ -1260,6 +1387,9 @@ body[data-theme="light"] {
       }
       if (tabId === 'manualEntry') {
           manualInitFilters();
+      }
+      if (tabId === 'terminalsTab') {
+          loadTerminals();
       }
     }
 
@@ -3271,11 +3401,19 @@ async function postScheduleCellPB(payload) {
       monthPick.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
     }
 
+    // Ініціалізація дашборду — сьогоднішня дата
+    const dashDateEl = document.getElementById('dashDate');
+    if (dashDateEl) dashDateEl.value = ymd(now);
+
+    // WebSocket — підключаємось завжди (WS не потребує токен)
+    dashConnectWs();
+
     const token = getToken();
     if (token) {
       setStatus(null, "Перевірка...");
       try {
         await loadEmployees();
+        await loadDashboard();
       } catch (e) {
         console.error(e);
         setStatus(false, "Помилка");
@@ -3359,11 +3497,365 @@ document.addEventListener("DOMContentLoaded", () => {
   if (bothCheckbox) bothCheckbox.addEventListener("change", checkExistingEvents);
   if (directionSelect) directionSelect.addEventListener("change", checkExistingEvents);
 });
-  
-  
-  
-  
-  
+
+// ======================= DASHBOARD =======================
+
+let _dashEvents = [];
+let _dashWs = null;
+
+function dashConnectWs() {
+  // Закриваємо старе з'єднання
+  if (_dashWs) {
+    try { _dashWs.close(); } catch(_) {}
+    _dashWs = null;
+  }
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${location.host}/ws/scans`;
+
+  _dashWs = new WebSocket(url);
+
+  _dashWs.onopen = () => {
+    console.log('WS connected:', url);
+    dashUpdateWsIndicator(true);
+  };
+
+  _dashWs.onclose = () => {
+    console.log('WS disconnected, reconnecting in 3s...');
+    dashUpdateWsIndicator(false);
+    setTimeout(dashConnectWs, 3000);
+  };
+
+  _dashWs.onerror = () => {
+    dashUpdateWsIndicator(false);
+  };
+
+  _dashWs.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'new_scan') {
+        dashOnNewScan(data);
+      }
+    } catch(e) {
+      console.warn('WS parse error:', e);
+    }
+  };
+}
+
+function dashUpdateWsIndicator(connected) {
+  const el = document.getElementById('wsIndicator');
+  if (!el) return;
+  if (connected) {
+    el.innerHTML = '<span class="dot ok"></span> <span>Live</span>';
+  } else {
+    el.innerHTML = '<span class="dot bad"></span> <span>Offline</span>';
+  }
+}
+
+function dashOnNewScan(data) {
+  // Перевіряємо чи дашборд показує сьогоднішню дату
+  const dashDate = document.getElementById('dashDate')?.value || '';
+  const eventDate = data.date_local || '';
+  if (dashDate && eventDate && dashDate !== eventDate) return;
+
+  // Додаємо на початок масиву
+  _dashEvents.unshift(data);
+
+  // Оновлюємо підсумки
+  const totalIn = _dashEvents.filter(e => e.direction === 'IN').length;
+  const totalOut = _dashEvents.filter(e => e.direction === 'OUT').length;
+  const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
+
+  const summaryEl = document.getElementById('dashSummary');
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div class="status-pill"><span class="dot ok"></span> <span>Всього: ${_dashEvents.length}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: ${totalIn}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: ${totalOut}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: ${uniqueEmps}</span></div>
+    `;
+  }
+
+  // Перерендер таблиці з урахуванням фільтрів
+  dashApplyFilter();
+}
+
+function dashToday() {
+  const now = new Date();
+  document.getElementById('dashDate').value = ymd(now);
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const dateVal = document.getElementById('dashDate').value;
+  if (!dateVal) {
+    dashToday();
+    return;
+  }
+
+  document.getElementById('dashCount').textContent = 'Завантаження…';
+
+  try {
+    const res = await apiFetch(`/stats/recent-scans?scan_date=${encodeURIComponent(dateVal)}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+
+    const data = await res.json();
+    _dashEvents = data.events || [];
+
+    // Підсумки
+    const totalIn = _dashEvents.filter(e => e.direction === 'IN').length;
+    const totalOut = _dashEvents.filter(e => e.direction === 'OUT').length;
+    const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
+
+    const summaryEl = document.getElementById('dashSummary');
+    summaryEl.innerHTML = `
+      <div class="status-pill"><span class="dot ok"></span> <span>Всього: ${_dashEvents.length}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: ${totalIn}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: ${totalOut}</span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: ${uniqueEmps}</span></div>
+    `;
+
+    dashApplyFilter();
+  } catch (e) {
+    console.error('Помилка завантаження дашборду:', e);
+    document.getElementById('dashCount').textContent = `Помилка: ${e.message}`;
+  }
+}
+
+function dashApplyFilter() {
+  const q = (document.getElementById('dashSearch')?.value || '').trim().toLowerCase();
+  const dir = document.getElementById('dashDirFilter')?.value || '';
+
+  let filtered = _dashEvents;
+
+  if (dir) {
+    filtered = filtered.filter(e => e.direction === dir);
+  }
+
+  if (q) {
+    filtered = filtered.filter(e => {
+      const hay = [e.employee_name, e.position, e.direction, e.terminal_name, e.comment].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  renderDashTable(filtered);
+}
+
+function renderDashTable(events) {
+  const tbody = document.querySelector('#dashTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!events || events.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="6" style="text-align:center; color:var(--muted);">Немає подій за цей день</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  events.forEach(e => {
+    const tr = document.createElement('tr');
+    const dirClass = e.direction === 'IN' ? 'ok' : 'warn';
+    const dirIcon = e.direction === 'IN' ? '⬆️' : '⬇️';
+    const manualBadge = e.is_manual ? ' <span class="badge auto">ручна</span>' : '';
+
+    tr.innerHTML = `
+      <td style="font-weight:900; font-variant-numeric:tabular-nums;">${escapeHtml(e.ts_local)}</td>
+      <td><span class="badge ${dirClass}">${dirIcon} ${e.direction}</span>${manualBadge}</td>
+      <td>${escapeHtml(e.employee_name)}</td>
+      <td class="muted">${escapeHtml(e.position)}</td>
+      <td>${e.terminal_name ? escapeHtml(e.terminal_name) : (e.terminal_id ? 'ID:' + e.terminal_id : '—')}</td>
+      <td class="muted" style="max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(e.comment)}">${escapeHtml(e.comment)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ======================= TERMINALS =======================
+
+async function loadTerminals() {
+  try {
+    const res = await apiFetch('/terminals/');
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`terminals HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+    const terminals = await res.json();
+    renderTerminalsTable(terminals);
+  } catch (e) {
+    console.error("Помилка завантаження терміналів:", e);
+  }
+}
+
+function renderTerminalsTable(terminals) {
+  const tbody = document.querySelector('#terminalsTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!terminals || terminals.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="text-align:center; color:var(--muted);">Немає терміналів</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  terminals.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.id}</td>
+      <td>${escapeHtml(t.name)}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <code id="key-${t.id}" style="font-size:12px; word-break:break-all; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">${escapeHtml(t.api_key)}</code>
+          <button class="btn secondary" style="padding:6px 10px; font-size:11px; white-space:nowrap;" onclick="copyApiKey(${t.id})">Копіювати</button>
+        </div>
+      </td>
+      <td>
+        <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">\u21BB Змінити ключ</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function copyApiKey(terminalId) {
+  const el = document.getElementById(`key-${terminalId}`);
+  if (!el) return;
+  const key = el.textContent.trim();
+  navigator.clipboard.writeText(key).then(() => {
+    const infoEl = document.getElementById('terminalInfo');
+    if (infoEl) {
+      infoEl.textContent = `\u2705 API-ключ скопійовано в буфер обміну!`;
+      infoEl.style.display = 'block';
+      setTimeout(() => { infoEl.style.display = 'none'; }, 3000);
+    }
+  }).catch(() => {
+    // Fallback
+    prompt('Скопіюйте ключ:', key);
+  });
+}
+
+let _rotatePending = null;
+
+function rotateTerminalKey(terminalId, terminalName) {
+  _rotatePending = { terminalId, terminalName };
+
+  document.getElementById('rotateKeyDetails').textContent =
+    `Термінал: "${terminalName}" (ID: ${terminalId})`;
+
+  document.getElementById('rotateKeyLogin').value = '';
+  document.getElementById('rotateKeyPassword').value = '';
+  document.getElementById('rotateKeyError').style.display = 'none';
+
+  document.getElementById('rotateKeyBackdrop').classList.add('show');
+  setTimeout(() => document.getElementById('rotateKeyLogin').focus(), 100);
+}
+
+function closeRotateKeyConfirm() {
+  document.getElementById('rotateKeyBackdrop').classList.remove('show');
+  _rotatePending = null;
+}
+
+async function submitRotateKey() {
+  const login = document.getElementById('rotateKeyLogin').value.trim();
+  const password = document.getElementById('rotateKeyPassword').value;
+  const errEl = document.getElementById('rotateKeyError');
+  errEl.style.display = 'none';
+
+  if (!login || !password) {
+    errEl.textContent = 'Введіть логін і пароль';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (!_rotatePending) {
+    errEl.textContent = 'Помилка: дані терміналу відсутні';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    // 1) Повторна авторизація
+    const authRes = await fetch(`${API_ROOT}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: login, password: password })
+    });
+
+    if (!authRes.ok) {
+      throw new Error('Невірний логін або пароль');
+    }
+
+    const authData = await authRes.json();
+    const tempToken = extractToken(authData);
+    if (!tempToken) throw new Error('Не вдалося отримати токен');
+
+    // 2) Ротація ключа з отриманим токеном
+    const res = await fetch(`${API_ROOT}/terminals/${_rotatePending.terminalId}/rotate_key`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${tempToken}` }
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+
+    const data = await res.json();
+
+    // 3) Успіх
+    closeRotateKeyConfirm();
+    await loadTerminals();
+
+    const infoEl = document.getElementById('terminalInfo');
+    if (infoEl) {
+      infoEl.innerHTML = `\u2705 Ключ змінено!<br><b>Новий ключ:</b> <code>${escapeHtml(data.api_key)}</code><br><br>Оновіть ключ на Android-терміналі.`;
+      infoEl.style.display = 'block';
+    }
+  } catch (e) {
+    errEl.textContent = String(e?.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+async function createTerminal() {
+  const nameInput = document.getElementById('newTerminalName');
+  const name = (nameInput?.value || '').trim();
+  const errEl = document.getElementById('terminalError');
+  const infoEl = document.getElementById('terminalInfo');
+
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  if (!name) {
+    errEl.textContent = 'Вкажіть назву терміналу';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/terminals/?name=${encodeURIComponent(name)}`, { method: 'POST' });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+
+    const data = await res.json();
+    nameInput.value = '';
+    await loadTerminals();
+
+    infoEl.innerHTML = `\u2705 Термінал створено!<br><b>ID:</b> ${data.id}<br><b>Назва:</b> ${escapeHtml(data.name)}<br><b>API-ключ:</b> <code>${escapeHtml(data.api_key)}</code><br><br>Введіть цей ключ в налаштування Android-терміналу.`;
+    infoEl.style.display = 'block';
+  } catch (e) {
+    errEl.textContent = `Помилка: ${String(e?.message || e)}`;
+    errEl.style.display = 'block';
+  }
+}
+
 </script>
 
 </body>

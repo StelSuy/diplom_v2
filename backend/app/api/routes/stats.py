@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -8,10 +8,63 @@ from app.api.deps import require_admin
 from app.db.session import get_db
 from app.crud import event as event_crud
 from app.core.time import to_warsaw
+from app.models.event import Event
+from app.models.employee import Employee
+from app.models.terminal import Terminal
 from app.schemas.stats import EmployeeDailyStats, DailyWorkStat, WorktimeAnomaly, WeekWorkStat, MonthWorkStat
 from app.services.worktime import build_intervals, split_interval_seconds_by_local_day, hms_from_seconds, iter_local_days
 
 router = APIRouter(prefix="/stats", dependencies=[Depends(require_admin)])
+
+
+@router.get("/recent-scans")
+def recent_scans(
+    scan_date: date = Query(None, description="YYYY-MM-DD (local Europe/Warsaw). Defaults to today."),
+    db: Session = Depends(get_db),
+):
+    """
+    Всі сканування за вказану дату (або сьогодні),
+    відсортовані від найновіших до найстаріших.
+    """
+    if scan_date is None:
+        scan_date = to_warsaw(datetime.now(tz=timezone.utc)).date()
+
+    # Доба в Warsaw → UTC
+    from zoneinfo import ZoneInfo
+    tz_w = ZoneInfo("Europe/Warsaw")
+    start_local = datetime(scan_date.year, scan_date.month, scan_date.day, tzinfo=tz_w)
+    end_local = start_local + timedelta(days=1)
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+    rows = (
+        db.query(Event, Employee, Terminal)
+        .join(Employee, Event.employee_id == Employee.id)
+        .outerjoin(Terminal, Event.terminal_id == Terminal.id)
+        .filter(Event.ts >= start_utc, Event.ts < end_utc)
+        .order_by(Event.ts.desc())
+        .all()
+    )
+
+    result = []
+    for ev, emp, term in rows:
+        ts_local = to_warsaw(ev.ts.replace(tzinfo=timezone.utc))
+        result.append({
+            "id": ev.id,
+            "employee_id": emp.id,
+            "employee_name": emp.full_name,
+            "position": emp.position or "",
+            "direction": ev.direction,
+            "ts_utc": ev.ts.isoformat(),
+            "ts_local": ts_local.strftime("%H:%M:%S"),
+            "date_local": ts_local.strftime("%Y-%m-%d"),
+            "terminal_id": ev.terminal_id,
+            "terminal_name": term.name if term else "",
+            "is_manual": ev.is_manual,
+            "comment": ev.comment or "",
+        })
+
+    return {"date": scan_date.isoformat(), "count": len(result), "events": result}
 
 
 @router.get("/employee/{employee_id}")

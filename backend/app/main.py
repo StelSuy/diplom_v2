@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.api.router import api_router
+from app.ws.routes import router as ws_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.seed import seed_demo_data
@@ -160,6 +161,9 @@ async def root():
 
 # Include API Router
 app.include_router(api_router, prefix="/api")
+
+# WebSocket Router
+app.include_router(ws_router)
 
 # Mount Admin Static Files
 try:

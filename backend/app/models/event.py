@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import DateTime, ForeignKey, String, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
@@ -20,4 +20,4 @@ class Event(Base):
     is_manual: Mapped[bool] = mapped_column(Boolean, default=False, comment="Чи створена подія вручну")
     created_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     comment: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="Коментар до ручної події")
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow, nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
