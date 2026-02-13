@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Адмін-панель — Тайм-трекер</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
   <style>
  /* Темна тема (за замовчуванням) */
@@ -650,6 +651,7 @@ body[data-theme="light"] {
   <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
   <button class="tab-btn" onclick="openTab('manualEntry')">Ручний ввід</button>
   <button class="tab-btn" onclick="openTab('terminalsTab')">Термінали</button>
+  <button class="tab-btn" onclick="openTab('auditTab')">Журнал дій</button>
 </div>
 
   <!-- ================= DASHBOARD ================= -->
@@ -996,72 +998,83 @@ body[data-theme="light"] {
 <div id="manualEntry" class="tab-content">
   <div class="row">
     <div class="col">
-      <div class="box">
-        <div style="font-weight:950; margin-bottom:12px;">Ручний ввід події (вхід/вихід)</div>
-        
-        <div class="info" style="margin-bottom:12px;">
-          ⚠️ Використовуйте цю функцію тільки у випадку проблем з терміналом або телефоном користувача.
-          Для кожної операції потрібна повторна авторизація адміністратора.
-        </div>
 
+      <!-- ===== Спільний вибір співробітника ===== -->
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:8px;">Корекція подій</div>
+        <div class="muted" style="margin-bottom:12px;">
+          Ручне додавання подій або очистка статистики за день. Кожна операція вимагає повторної авторизації.
+        </div>
         <div class="grid2">
           <div>
             <label>Пошук співробітника</label>
-            <input id="manualEmpSearch" placeholder="Введи ПІБ / ID / NFC..." oninput="manualApplyFilter()" />
+            <input id="manualEmpSearch" placeholder="ПІБ / ID / NFC…" oninput="manualApplyFilter()" />
           </div>
           <div>
             <label>Співробітник</label>
             <select id="manualEmpSelect"></select>
           </div>
         </div>
+      </div>
 
-        <div class="grid2" style="margin-top:10px;">
+      <!-- ===== Додати подію ===== -->
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:10px;">➕ Додати подію</div>
+
+        <div class="grid2">
           <div>
             <label>Дата</label>
             <input id="manualDate" type="date" />
           </div>
           <div>
-            <label>Час входу (ГГ:ХХ:СС)</label>
-            <input id="manualTimeIn" type="time" step="1" placeholder="08:00:00" />
+            <label>Режим</label>
+            <select id="manualMode" onchange="toggleManualMode()">
+              <option value="both">Вхід + Вихід (пара)</option>
+              <option value="single">Одна подія</option>
+            </select>
           </div>
         </div>
 
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <label>Час виходу (опціонально)</label>
-            <input id="manualTimeOut" type="time" step="1" placeholder="17:00:00" />
-          </div>
-          <div>
-            <label style="margin-top: 26px;">
-              <input type="checkbox" id="manualAddBothEvents" checked />
-              Додати обидві події (IN і OUT)
-            </label>
+        <!-- Режим пари -->
+        <div id="manualBothBox">
+          <div class="grid2" style="margin-top:10px;">
+            <div>
+              <label>Час входу</label>
+              <input id="manualTimeIn" type="time" step="1" value="08:00:00" />
+            </div>
+            <div>
+              <label>Час виходу</label>
+              <input id="manualTimeOut" type="time" step="1" value="17:00:00" />
+            </div>
           </div>
         </div>
 
-        <!-- Показується тільки якщо галочка НЕ встановлена -->
-        <div id="manualSingleEventBox" style="margin-top:10px; display:none;">
-          <label>Тип події</label>
-          <select id="manualDirection">
-            <option value="IN">Вхід (IN)</option>
-            <option value="OUT">Вихід (OUT)</option>
-          </select>
-        </div>
-
-        <div class="info" style="margin-top:10px; font-size:11px;">
-          💡 <b>Режим "Обидві події":</b> Автоматично створить вхід і вихід за вказані часи.<br>
-          💡 <b>Режим "Одна подія":</b> Створить тільки одну подію (вибраного типу).
+        <!-- Режим однієї події -->
+        <div id="manualSingleBox" style="display:none;">
+          <div class="grid2" style="margin-top:10px;">
+            <div>
+              <label>Тип</label>
+              <select id="manualDirection">
+                <option value="IN">⚬ Вхід (IN)</option>
+                <option value="OUT">⚫ Вихід (OUT)</option>
+              </select>
+            </div>
+            <div>
+              <label>Час</label>
+              <input id="manualTimeSingle" type="time" step="1" value="08:00:00" />
+            </div>
+          </div>
         </div>
 
         <div style="margin-top:10px;">
-          <label>Коментар / Причина</label>
-          <textarea id="manualComment" placeholder="Наприклад: Телефон розряджений, термінал не спрацював..."></textarea>
+          <label>Причина</label>
+          <input id="manualComment" placeholder="Телефон розряджений, термінал не спрацював…" />
         </div>
-          
-          <div id="manualWarning" class="info" style="margin-top:10px; display:none; background: rgba(255,209,102,0.10); border-color: rgba(255,209,102,0.35);">
-  ⚠️ <span id="manualWarningText"></span>
+
+        <div id="manualWarning" class="info" style="margin-top:10px; display:none; background:rgba(255,209,102,0.10); border-color:rgba(255,209,102,0.35);">
+          ⚠️ <span id="manualWarningText"></span>
         </div>
-        
+
         <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
           <button class="btn" onclick="openManualEntryConfirm()">Додати подію</button>
           <button class="btn secondary" onclick="clearManualForm()">Очистити</button>
@@ -1071,13 +1084,34 @@ body[data-theme="light"] {
         <div id="manualError" class="error" style="margin-top:12px;"></div>
       </div>
 
-      <!-- Останні ручні події -->
+      <!-- ===== Очистка подій за день ===== -->
       <div class="box">
-        <div style="font-weight:950; margin-bottom:8px;">
-          Останні ручні події
-          <button class="btn secondary" onclick="loadManualEvents()" style="margin-left:10px; padding:6px 10px; font-size:11px;">Оновити</button>
+        <div style="font-weight:950; margin-bottom:10px;">⛔ Очистка подій за день</div>
+        <div class="muted" style="margin-bottom:10px;">
+          Видаляє <b>всі</b> події (скани та ручні) обраного співробітника за вказану дату. Потребує повторну авторизацію.
         </div>
-        <table id="manualEventsTable">
+
+        <div class="grid2">
+          <div>
+            <label>Дата для очистки</label>
+            <input id="clearDayDate" type="date" />
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button class="btn secondary" style="background:rgba(255,77,77,0.15); border-color:rgba(255,77,77,0.35); color:#ff8b8b;" onclick="openClearDayConfirm()">Видалити події за день</button>
+          </div>
+        </div>
+
+        <div id="clearDayInfo" class="info" style="margin-top:10px; display:none;"></div>
+        <div id="clearDayError" class="error" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- ===== Останні ручні події ===== -->
+      <div class="box">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:950;">Останні ручні події</div>
+          <button class="btn secondary" onclick="loadManualEvents()" style="padding:6px 10px; font-size:11px;">Оновити</button>
+        </div>
+        <table id="manualEventsTable" style="margin-top:10px;">
           <thead>
             <tr>
               <th>ID</th>
@@ -1133,6 +1167,55 @@ body[data-theme="light"] {
           <div id="terminalInfo" class="info" style="margin-top:10px; display:none;"></div>
           <div id="terminalError" class="error" style="margin-top:10px;"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CLEAR DAY CONFIRM ================= -->
+  <div id="clearDayBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">⛔ Очистка подій за день</div>
+        <button class="btn secondary" onclick="closeClearDayConfirm()">Закрити</button>
+      </div>
+      <div class="modal-body">
+        <div class="info" style="margin-bottom:12px; background:rgba(255,77,77,0.10); border-color:rgba(255,77,77,0.35);">
+          <strong>Увага!</strong> Ця дія видалить <b>всі</b> події (і скани, і ручні) для обраного співробітника за вказану дату. Це незворотна операція.
+        </div>
+        <pre id="clearDayDetails" style="white-space:pre-wrap; font-size:13px; padding:12px; background:var(--surface); border-radius:10px; border:1px solid var(--border);"></pre>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+          <div style="font-weight:900; margin-bottom:8px;">Повторна авторизація</div>
+          <label>Логін</label>
+          <input id="clearDayLogin" autocomplete="username" />
+          <label>Пароль</label>
+          <input id="clearDayPassword" type="password" autocomplete="current-password" />
+        </div>
+        <div id="clearDayConfirmError" class="error"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" onclick="closeClearDayConfirm()">Скасувати</button>
+        <button class="btn" style="background:rgba(255,77,77,0.25); border-color:rgba(255,77,77,0.45); color:#ff8b8b;" onclick="submitClearDay()">Підтвердити видалення</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= QR CODE MODAL ================= -->
+  <div id="qrBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📱 QR-код для терміналу</div>
+        <button class="btn secondary" onclick="closeQrModal()">Закрити</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div id="qrTerminalInfo" style="font-weight:900; margin-bottom:14px;"></div>
+        <canvas id="qrCanvas" style="border:4px solid #fff; border-radius:12px; image-rendering:pixelated;"></canvas>
+        <div class="muted" style="margin-top:12px;">
+          Скануйте цей QR-код камерою Android-терміналу при першому запуску.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" onclick="closeQrModal()">Закрити</button>
       </div>
     </div>
   </div>
@@ -1228,6 +1311,63 @@ body[data-theme="light"] {
     </div>
   </div>
 </div>
+  <!-- ================= AUDIT LOG ================= -->
+  <div id="auditTab" class="tab-content">
+    <div class="row">
+      <div class="col">
+
+        <div class="box">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:950; font-size:16px;">Журнал дій адміністратора</div>
+              <div class="muted" style="margin-top:4px;">Всі критичні дії з моменту старту сервера (до 500 записів)</div>
+            </div>
+            <button class="btn secondary" onclick="loadAuditLog()">Оновити</button>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="flex:1; min-width:200px;">
+              <label>Фільтр по дії</label>
+              <select id="auditActionFilter" onchange="loadAuditLog()">
+                <option value="">Всі дії</option>
+              </select>
+            </div>
+            <div style="min-width:80px;">
+              <label>Показати</label>
+              <select id="auditLimit" onchange="loadAuditLog()">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+              </select>
+            </div>
+            <div style="min-width:200px;">
+              <label>Пошук по тексту</label>
+              <input id="auditSearch" placeholder="ПІБ, ID, дія..." oninput="auditApplyFilter()" />
+            </div>
+          </div>
+
+          <div id="auditSummary" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+        </div>
+
+        <table id="auditTable">
+          <thead>
+            <tr>
+              <th style="min-width:155px;">Час (UTC)</th>
+              <th style="min-width:180px;">Дія</th>
+              <th style="min-width:100px;">Адмін</th>
+              <th>Деталі</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="text-align:center; color:var(--muted);">Завантаження...</td></tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+  </div>
+
 <script>
   const API_ROOT = "/api";
   let chartInstance = null;
@@ -1390,6 +1530,10 @@ body[data-theme="light"] {
       }
       if (tabId === 'terminalsTab') {
           loadTerminals();
+      }
+      if (tabId === 'auditTab') {
+        auditInitActionFilter();
+        loadAuditLog();
       }
     }
 
@@ -2019,23 +2163,13 @@ function scheduleCellText(it) {
 
 // ===== MANUAL ENTRY - UPDATED =====
 
-// Показати/сховати поле вибору типу події
-function toggleManualEventType() {
-  const addBoth = document.getElementById("manualAddBothEvents").checked;
-  const singleBox = document.getElementById("manualSingleEventBox");
-  if (singleBox) {
-    singleBox.style.display = addBoth ? "none" : "block";
-  }
+function toggleManualMode() {
+  const mode = document.getElementById('manualMode')?.value || 'both';
+  const bothBox = document.getElementById('manualBothBox');
+  const singleBox = document.getElementById('manualSingleBox');
+  if (bothBox) bothBox.style.display = (mode === 'both') ? '' : 'none';
+  if (singleBox) singleBox.style.display = (mode === 'single') ? '' : 'none';
 }
-
-// Додати слухач на галочку
-document.addEventListener("DOMContentLoaded", () => {
-  const checkbox = document.getElementById("manualAddBothEvents");
-  if (checkbox) {
-    checkbox.addEventListener("change", toggleManualEventType);
-    toggleManualEventType(); // Ініціалізація
-  }
-});
 
 let manualEmployeesFiltered = [];
 let manualPendingData = null;
@@ -2070,148 +2204,90 @@ async function manualInitFilters() {
   manualEmployeesFiltered = Array.isArray(_employeesCache) ? [..._employeesCache] : [];
   manualRenderEmpSelect();
   
-  // Встановлюємо поточну дату і час
   const now = new Date();
-  const dateEl = document.getElementById("manualDate");
-  const timeInEl = document.getElementById("manualTimeIn");
-  const timeOutEl = document.getElementById("manualTimeOut");
+  const d = ymd(now);
+  const dateEl = document.getElementById('manualDate');
+  const clearDateEl = document.getElementById('clearDayDate');
+  if (dateEl) dateEl.value = d;
+  if (clearDateEl) clearDateEl.value = d;
   
-  if (dateEl) {
-    dateEl.value = ymd(now);
-  }
-  
-  if (timeInEl) {
-    timeInEl.value = "08:00:00";
-  }
-  
-  if (timeOutEl) {
-    timeOutEl.value = "17:00:00";
-  }
-  
-  // Ініціалізація видимості полів
-  toggleManualEventType();
-  
-  // Завантажуємо останні події
+  toggleManualMode();
   await loadManualEvents();
 }
 
 function clearManualForm() {
-  document.getElementById("manualEmpSelect").value = "";
-  document.getElementById("manualEmpSearch").value = "";
-  document.getElementById("manualComment").value = "";
+  document.getElementById('manualComment').value = '';
   
   const now = new Date();
-  document.getElementById("manualDate").value = ymd(now);
+  document.getElementById('manualDate').value = ymd(now);
   
-  document.getElementById("manualTimeIn").value = "07:00:00";
-  document.getElementById("manualTimeOut").value = "15:00:00";
-  document.getElementById("manualAddBothEvents").checked = true;
-  document.getElementById("manualDirection").value = "IN";
+  document.getElementById('manualTimeIn').value = '08:00:00';
+  document.getElementById('manualTimeOut').value = '17:00:00';
+  const timeSingle = document.getElementById('manualTimeSingle');
+  if (timeSingle) timeSingle.value = '08:00:00';
+  document.getElementById('manualMode').value = 'both';
+  document.getElementById('manualDirection').value = 'IN';
   
-  toggleManualEventType();
+  toggleManualMode();
   
-  const infoEl = document.getElementById("manualInfo");
-  const errorEl = document.getElementById("manualError");
-  if (infoEl) infoEl.style.display = "none";
-  if (errorEl) errorEl.style.display = "none";
+  const infoEl = document.getElementById('manualInfo');
+  const errorEl = document.getElementById('manualError');
+  const warnEl = document.getElementById('manualWarning');
+  if (infoEl) infoEl.style.display = 'none';
+  if (errorEl) errorEl.style.display = 'none';
+  if (warnEl) warnEl.style.display = 'none';
 }
 
 function openManualEntryConfirm() {
-  const empId = document.getElementById("manualEmpSelect").value;
-  const dateVal = document.getElementById("manualDate").value;
-  const timeInVal = document.getElementById("manualTimeIn").value;
-  const timeOutVal = document.getElementById("manualTimeOut").value;
-  const addBoth = document.getElementById("manualAddBothEvents").checked;
-  const direction = document.getElementById("manualDirection").value;
-  const comment = document.getElementById("manualComment").value.trim();
+  const empId = document.getElementById('manualEmpSelect').value;
+  const dateVal = document.getElementById('manualDate').value;
+  const mode = document.getElementById('manualMode').value;
+  const addBoth = (mode === 'both');
+  const timeInVal = document.getElementById('manualTimeIn').value;
+  const timeOutVal = document.getElementById('manualTimeOut').value;
+  const timeSingleVal = document.getElementById('manualTimeSingle')?.value || '';
+  const direction = document.getElementById('manualDirection').value;
+  const comment = document.getElementById('manualComment').value.trim();
   
-  const errorEl = document.getElementById("manualError");
-  errorEl.style.display = "none";
+  const errorEl = document.getElementById('manualError');
+  errorEl.style.display = 'none';
   
-  if (!empId) {
-    errorEl.textContent = "Оберіть співробітника";
-    errorEl.style.display = "block";
-    return;
-  }
+  if (!empId) { errorEl.textContent = 'Оберіть співробітника'; errorEl.style.display = 'block'; return; }
+  if (!dateVal) { errorEl.textContent = 'Вкажіть дату'; errorEl.style.display = 'block'; return; }
+  if (!comment) { errorEl.textContent = 'Вкажіть причину'; errorEl.style.display = 'block'; return; }
   
-  if (!dateVal) {
-    errorEl.textContent = "Вкажіть дату";
-    errorEl.style.display = "block";
-    return;
-  }
-  
-  if (!timeInVal) {
-    errorEl.textContent = "Вкажіть час входу";
-    errorEl.style.display = "block";
-    return;
-  }
-  
-  if (!comment) {
-    errorEl.textContent = "Вкажіть причину ручного вводу";
-    errorEl.style.display = "block";
-    return;
-  }
-  
-  // Перевірка: якщо галочка встановлена, час виходу обов'язковий
-  if (addBoth && !timeOutVal) {
-    errorEl.textContent = "Вкажіть час виходу або зніміть галочку";
-    errorEl.style.display = "block";
-    return;
-  }
-  
-  // Перевірка: час виходу має бути пізніше часу входу
-  if (addBoth && timeOutVal) {
-    const timeIn = hhmmToMinutes(timeInVal);
-    const timeOut = hhmmToMinutes(timeOutVal);
-    
-    if (timeOut <= timeIn) {
-      errorEl.textContent = "Час виходу має бути пізніше часу входу";
-      errorEl.style.display = "block";
-      return;
+  if (addBoth) {
+    if (!timeInVal) { errorEl.textContent = 'Вкажіть час входу'; errorEl.style.display = 'block'; return; }
+    if (!timeOutVal) { errorEl.textContent = 'Вкажіть час виходу'; errorEl.style.display = 'block'; return; }
+    if (hhmmToMinutes(timeOutVal) <= hhmmToMinutes(timeInVal)) {
+      errorEl.textContent = 'Час виходу має бути пізніше часу входу'; errorEl.style.display = 'block'; return;
     }
+  } else {
+    if (!timeSingleVal) { errorEl.textContent = 'Вкажіть час'; errorEl.style.display = 'block'; return; }
   }
   
-  // Знаходимо співробітника
   const employee = _employeesCache.find(e => e.id == empId);
-  if (!employee) {
-    errorEl.textContent = "Співробітника не знайдено";
-    errorEl.style.display = "block";
-    return;
-  }
+  if (!employee) { errorEl.textContent = 'Співробітника не знайдено'; errorEl.style.display = 'block'; return; }
   
-  // Формуємо дані для збереження
   manualPendingData = {
     employee_id: parseInt(empId),
     date: dateVal,
-    time_in: timeInVal,
+    time_in: addBoth ? timeInVal : timeSingleVal,
     time_out: addBoth ? timeOutVal : null,
-    direction: addBoth ? null : direction, // Тип події тільки якщо одна подія
+    direction: addBoth ? null : direction,
     comment: comment,
   };
   
-  // Показуємо деталі в модалці
-  const detailsEl = document.getElementById("manualConfirmDetails");
-  let detailsText = `Співробітник: ${employee.full_name} (${employee.nfc_uid})\n` +
-    `Дата: ${dateVal}\n`;
+  const detailsEl = document.getElementById('manualConfirmDetails');
+  let detailsText = `Співробітник: ${employee.full_name}\nДата: ${dateVal}\n`;
   
   if (addBoth) {
-    detailsText += `Час входу: ${timeInVal}\n`;
-    detailsText += `Час виходу: ${timeOutVal}\n`;
-    
-    // Розрахунок тривалості
-    const timeIn = hhmmToMinutes(timeInVal);
-    const timeOut = hhmmToMinutes(timeOutVal);
-    const duration = timeOut - timeIn;
-    const hours = Math.floor(duration / 60);
-    const mins = duration % 60;
-    detailsText += `Тривалість: ${hours}г ${mins}хв\n`;
+    const dur = hhmmToMinutes(timeOutVal) - hhmmToMinutes(timeInVal);
+    detailsText += `Вхід: ${timeInVal} → Вихід: ${timeOutVal} (${Math.floor(dur/60)}г ${dur%60}хв)\n`;
   } else {
-    detailsText += `Тип події: ${direction === 'IN' ? 'ВХІД' : 'ВИХІД'}\n`;
-    detailsText += `Час: ${timeInVal}\n`;
+    detailsText += `${direction === 'IN' ? 'ВХІД' : 'ВИХІД'}: ${timeSingleVal}\n`;
   }
-  
-  detailsText += `Коментар: ${comment}`;
-  
+  detailsText += `Причина: ${comment}`;
   detailsEl.textContent = detailsText;
   
   // Очищуємо поля авторизації
@@ -3425,10 +3501,11 @@ async function postScheduleCellPB(payload) {
   
   
   async function checkExistingEvents() {
-  const empId = document.getElementById("manualEmpSelect").value;
-  const dateVal = document.getElementById("manualDate").value;
-  const addBoth = document.getElementById("manualAddBothEvents").checked;
-  const direction = document.getElementById("manualDirection").value;
+  const empId = document.getElementById('manualEmpSelect').value;
+  const dateVal = document.getElementById('manualDate').value;
+  const mode = document.getElementById('manualMode')?.value || 'both';
+  const addBoth = (mode === 'both');
+  const direction = document.getElementById('manualDirection').value;
   
   const warningEl = document.getElementById("manualWarning");
   const warningText = document.getElementById("manualWarningText");
@@ -3486,16 +3563,16 @@ async function postScheduleCellPB(payload) {
 }
 
 // Додати слухачі
-document.addEventListener("DOMContentLoaded", () => {
-  const empSelect = document.getElementById("manualEmpSelect");
-  const dateInput = document.getElementById("manualDate");
-  const bothCheckbox = document.getElementById("manualAddBothEvents");
-  const directionSelect = document.getElementById("manualDirection");
+document.addEventListener('DOMContentLoaded', () => {
+  const empSelect = document.getElementById('manualEmpSelect');
+  const dateInput = document.getElementById('manualDate');
+  const modeSelect = document.getElementById('manualMode');
+  const directionSelect = document.getElementById('manualDirection');
   
-  if (empSelect) empSelect.addEventListener("change", checkExistingEvents);
-  if (dateInput) dateInput.addEventListener("change", checkExistingEvents);
-  if (bothCheckbox) bothCheckbox.addEventListener("change", checkExistingEvents);
-  if (directionSelect) directionSelect.addEventListener("change", checkExistingEvents);
+  if (empSelect) empSelect.addEventListener('change', checkExistingEvents);
+  if (dateInput) dateInput.addEventListener('change', checkExistingEvents);
+  if (modeSelect) modeSelect.addEventListener('change', checkExistingEvents);
+  if (directionSelect) directionSelect.addEventListener('change', checkExistingEvents);
 });
 
 // ======================= DASHBOARD =======================
@@ -3675,6 +3752,137 @@ function renderDashTable(events) {
   });
 }
 
+// ======================= CLEAR DAY =======================
+
+let _clearDayPending = null;
+
+function openClearDayConfirm() {
+  const empId = document.getElementById('manualEmpSelect').value;
+  const dateVal = document.getElementById('clearDayDate').value;
+
+  const errEl = document.getElementById('clearDayError');
+  errEl.style.display = 'none';
+
+  if (!empId) { errEl.textContent = 'Оберіть співробітника в блоці вище'; errEl.style.display = 'block'; return; }
+  if (!dateVal) { errEl.textContent = 'Вкажіть дату'; errEl.style.display = 'block'; return; }
+
+  const employee = _employeesCache.find(e => e.id == empId);
+  _clearDayPending = { employee_id: parseInt(empId), date: dateVal, employee_name: employee?.full_name || empId };
+
+  document.getElementById('clearDayDetails').textContent =
+    `Співробітник: ${_clearDayPending.employee_name}\nДата: ${dateVal}\n\nБудуть видалені ВСІ події (скани + ручні) за цю дату.`;
+
+  document.getElementById('clearDayLogin').value = '';
+  document.getElementById('clearDayPassword').value = '';
+  document.getElementById('clearDayConfirmError').style.display = 'none';
+
+  document.getElementById('clearDayBackdrop').classList.add('show');
+  setTimeout(() => document.getElementById('clearDayLogin').focus(), 100);
+}
+
+function closeClearDayConfirm() {
+  document.getElementById('clearDayBackdrop').classList.remove('show');
+  _clearDayPending = null;
+}
+
+async function submitClearDay() {
+  const login = document.getElementById('clearDayLogin').value.trim();
+  const password = document.getElementById('clearDayPassword').value;
+  const errEl = document.getElementById('clearDayConfirmError');
+  errEl.style.display = 'none';
+
+  if (!login || !password) { errEl.textContent = 'Введіть логін і пароль'; errEl.style.display = 'block'; return; }
+  if (!_clearDayPending) { errEl.textContent = 'Помилка: дані відсутні'; errEl.style.display = 'block'; return; }
+
+  try {
+    // 1) Повторна авторизація
+    const authRes = await fetch(`${API_ROOT}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: login, password: password })
+    });
+    if (!authRes.ok) throw new Error('Невірний логін або пароль');
+
+    const authData = await authRes.json();
+    const tempToken = extractToken(authData);
+    if (!tempToken) throw new Error('Не вдалося отримати токен');
+
+    // 2) Видалення
+    const res = await fetch(
+      `${API_ROOT}/events/manual/day/${_clearDayPending.employee_id}/${_clearDayPending.date}`,
+      { method: 'DELETE', headers: { 'Authorization': `Bearer ${tempToken}` } }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}\n${fmtJsonError(txt)}`);
+    }
+
+    const data = await res.json();
+    closeClearDayConfirm();
+
+    const infoEl = document.getElementById('clearDayInfo');
+    infoEl.textContent = `\u2705 Видалено ${data.deleted_count} подій за ${data.date} для ${_clearDayPending.employee_name}`;
+    infoEl.style.display = 'block';
+
+    await loadManualEvents();
+  } catch (e) {
+    errEl.textContent = String(e?.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+// ======================= QR CODE =======================
+
+function showTerminalQr(terminalId, terminalName, apiKey) {
+  // Визначаємо server URL (той самий, де зараз відкрита панель)
+  const serverUrl = `${location.protocol}//${location.host}`;
+
+  const payload = JSON.stringify({
+    server: serverUrl,
+    api_key: apiKey,
+    terminal_id: terminalId,
+    terminal_name: terminalName
+  });
+
+  document.getElementById('qrTerminalInfo').textContent =
+    `${terminalName} (ID: ${terminalId})`;
+
+  // Генеруємо QR
+  const qr = qrcode(0, 'M');
+  qr.addData(payload);
+  qr.make();
+
+  const moduleCount = qr.getModuleCount();
+  const cellSize = Math.max(4, Math.floor(280 / moduleCount));
+  const size = moduleCount * cellSize;
+
+  const canvas = document.getElementById('qrCanvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Білий фон
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
+  // Чорні модулі
+  ctx.fillStyle = '#000000';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  document.getElementById('qrBackdrop').classList.add('show');
+}
+
+function closeQrModal() {
+  document.getElementById('qrBackdrop').classList.remove('show');
+}
+
 // ======================= TERMINALS =======================
 
 async function loadTerminals() {
@@ -3715,7 +3923,10 @@ function renderTerminalsTable(terminals) {
         </div>
       </td>
       <td>
-        <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">\u21BB Змінити ключ</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn" style="padding:6px 10px; font-size:11px;" onclick="showTerminalQr(${t.id}, '${escapeHtml(t.name)}', '${escapeHtml(t.api_key)}')">QR</button>
+          <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">\u21BB Змінити ключ</button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -3822,6 +4033,184 @@ async function submitRotateKey() {
   }
 }
 
+// ======================= AUDIT LOG =======================
+
+let _auditEntries = [];   // повний список із сервера
+let _auditFiltered = [];  // після текстового пошуку
+
+async function auditInitActionFilter() {
+  try {
+    const res = await apiFetch('/audit/actions');
+    if (!res.ok) return;
+    const actions = await res.json();
+    const sel = document.getElementById('auditActionFilter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Всі дії</option>';
+    actions.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.action;
+      opt.textContent = a.label;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    console.warn('Не вдалося завантажити типи дій:', e);
+  }
+}
+
+async function loadAuditLog() {
+  const limit  = parseInt(document.getElementById('auditLimit')?.value || '100');
+  const action = document.getElementById('auditActionFilter')?.value || '';
+
+  const tbody = document.querySelector('#auditTable tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Завантаження…</td></tr>';
+
+  try {
+    let url = `/audit/log?limit=${limit}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+
+    const res = await apiFetch(url);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${fmtJsonError(txt)}`);
+    }
+
+    const data = await res.json();
+    _auditEntries = data.entries || [];
+    _auditFiltered = [..._auditEntries];
+
+    auditRenderSummary(data.total || _auditEntries.length);
+    auditApplyFilter();
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color:var(--bad);padding:12px;">Помилка: ${escapeHtml(String(e.message || e))}</td></tr>`;
+  }
+}
+
+function auditRenderSummary(total) {
+  const el = document.getElementById('auditSummary');
+  if (!el) return;
+
+  // Рахуємо топ дії
+  const counts = {};
+  _auditEntries.forEach(e => {
+    const lbl = e.action_label || e.action;
+    counts[lbl] = (counts[lbl] || 0) + 1;
+  });
+
+  const pills = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([lbl, cnt]) => `<div class="status-pill"><span class="dot"></span> <span>${escapeHtml(lbl)}: <b>${cnt}</b></span></div>`)
+    .join('');
+
+  el.innerHTML = `<div class="status-pill"><span class="dot ok"></span><span>Всього записів: <b>${total}</b></span></div>${pills}`;
+}
+
+function auditApplyFilter() {
+  const q = (document.getElementById('auditSearch')?.value || '').trim().toLowerCase();
+
+  _auditFiltered = !q ? [..._auditEntries] : _auditEntries.filter(e => {
+    const hay = [
+      e.action_label, e.action, e.admin,
+      JSON.stringify(e.details || {})
+    ].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
+  auditRenderTable(_auditFiltered);
+}
+
+// Іконки для типів дій
+const _AUDIT_ICONS = {
+  admin_login:         '🔑',
+  employee_create:     '👤',
+  employee_update:     '✏️',
+  employee_delete:     '🗑️',
+  manual_event_create: '➕',
+  manual_event_delete: '❌',
+  clear_day_events:    '⛔',
+  terminal_create:     '🖥️',
+  terminal_rotate_key: '🔄',
+};
+
+const _AUDIT_COLORS = {
+  admin_login:         'var(--accent)',
+  employee_create:     'var(--ok)',
+  employee_update:     'var(--warn)',
+  employee_delete:     'var(--bad)',
+  manual_event_create: 'var(--ok)',
+  manual_event_delete: 'var(--bad)',
+  clear_day_events:    'var(--bad)',
+  terminal_create:     'var(--ok)',
+  terminal_rotate_key: 'var(--warn)',
+};
+
+function auditFormatDetails(details) {
+  if (!details || !Object.keys(details).length) return '<span class="muted">—</span>';
+
+  const labels = {
+    employee_id:    'Співробітник',
+    full_name:      'ПІБ',
+    nfc_uid:        'NFC UID',
+    event_id:       'Подія',
+    direction:      'Напрямок',
+    ts_local:       'Час',
+    date:           'Дата',
+    deleted_count:  'Видалено',
+    terminal_id:    'Термінал',
+    name:           'Назва',
+    changes:        'Зміни',
+  };
+
+  return Object.entries(details)
+    .map(([k, v]) => {
+      const label = labels[k] || k;
+      let valStr = '';
+      if (v === null || v === undefined) valStr = '—';
+      else if (typeof v === 'object') valStr = JSON.stringify(v);
+      else valStr = String(v);
+      return `<span style="margin-right:10px;"><span class="muted small">${escapeHtml(label)}:</span> <b>${escapeHtml(valStr)}</b></span>`;
+    })
+    .join('');
+}
+
+function auditRenderTable(entries) {
+  const tbody = document.querySelector('#auditTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Немає записів</td></tr>';
+    return;
+  }
+
+  entries.forEach(e => {
+    const icon  = _AUDIT_ICONS[e.action] || '•';
+    const color = _AUDIT_COLORS[e.action] || 'var(--text)';
+    const label = e.action_label || e.action;
+
+    // Форматуємо час
+    const dt = new Date(e.ts);
+    const tsStr = Number.isNaN(dt.getTime())
+      ? escapeHtml(e.ts)
+      : dt.toLocaleString('uk-UA', {
+          year:'numeric', month:'2-digit', day:'2-digit',
+          hour:'2-digit', minute:'2-digit', second:'2-digit'
+        });
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-variant-numeric:tabular-nums; font-size:12px; white-space:nowrap;">${tsStr}</td>
+      <td>
+        <span style="color:${color}; font-size:16px; margin-right:6px;">${icon}</span>
+        <span style="font-weight:900;">${escapeHtml(label)}</span>
+      </td>
+      <td><span class="badge">${escapeHtml(e.admin || '—')}</span></td>
+      <td style="font-size:12px;">${auditFormatDetails(e.details)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 async function createTerminal() {
   const nameInput = document.getElementById('newTerminalName');
   const name = (nameInput?.value || '').trim();
@@ -3848,7 +4237,9 @@ async function createTerminal() {
     nameInput.value = '';
     await loadTerminals();
 
-    infoEl.innerHTML = `\u2705 Термінал створено!<br><b>ID:</b> ${data.id}<br><b>Назва:</b> ${escapeHtml(data.name)}<br><b>API-ключ:</b> <code>${escapeHtml(data.api_key)}</code><br><br>Введіть цей ключ в налаштування Android-терміналу.`;
+    infoEl.innerHTML = `\u2705 Термінал створено!<br><b>ID:</b> ${data.id}<br><b>Назва:</b> ${escapeHtml(data.name)}<br><b>API-ключ:</b> <code>${escapeHtml(data.api_key)}</code><br><br>Показати QR-код для налаштування Android-терміналу.`;
+    // Автоматично показуємо QR
+    showTerminalQr(data.id, data.name, data.api_key);
     infoEl.style.display = 'block';
   } catch (e) {
     errEl.textContent = `Помилка: ${String(e?.message || e)}`;

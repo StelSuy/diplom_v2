@@ -1,4 +1,5 @@
-﻿from datetime import datetime
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -20,12 +21,12 @@ class EventOut(BaseModel):
         from_attributes = True
 
 
-from pydantic import BaseModel
-from datetime import datetime
-
-
+# ВИПРАВЛЕНО: вилучено дублюючий імпорт BaseModel/datetime.
+# terminal_name залишений як Optional — термінал береться з X-Terminal-Key,
+# але поле можна передати для логів (не використовується в логіці).
+# ts: якщо None — ensure_utc() підставить now(UTC), що є очікуваною поведінкою.
 class NFCEventCreate(BaseModel):
-    terminal_name: str
+    terminal_name: Optional[str] = None  # ігнорується — термінал з X-Terminal-Key
     nfc_uid: str
     direction: str  # "IN" | "OUT"
-    ts: datetime | None = None
+    ts: Optional[datetime] = None        # None → server time (UTC)

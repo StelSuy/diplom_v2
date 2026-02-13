@@ -21,6 +21,36 @@ logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def _decode_jwt_payload(
+    credentials: Optional[HTTPAuthorizationCredentials],
+    context: str = "endpoint",
+) -> dict:
+    """
+    Shared helper: validates Bearer credentials and decodes JWT.
+    Raises HTTPException on any failure.
+    """
+    if not credentials or credentials.scheme.lower() != "bearer":
+        logger.warning(f"{context}: Missing or invalid Bearer token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        return jwt.decode(
+            credentials.credentials,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_alg],
+        )
+    except JWTError as e:
+        logger.warning(f"{context}: JWT decode error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 def get_current_terminal(
     x_terminal_key: Optional[str] = Header(None, alias="X-Terminal-Key"),
     db: Session = Depends(get_db),
@@ -47,7 +77,8 @@ def get_current_terminal(
     
     terminal = terminal_crud.get_by_api_key(db, x_terminal_key)
     if not terminal:
-        logger.warning(f"Invalid terminal key: {x_terminal_key[:8]}...")
+        # БАГ №5 ВИПРАВЛЕНО: не логуємо жодну частину секретного ключа
+        logger.warning("Invalid terminal key attempt")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid terminal key",
@@ -63,41 +94,10 @@ def get_current_user(
 ) -> User:
     """
     Dependency to authenticate user requests via JWT token.
-    
-    Args:
-        credentials: Bearer token from Authorization header
-        db: Database session
-        
-    Returns:
-        Authenticated User instance
-        
-    Raises:
-        HTTPException: If authentication fails
+    Uses shared _decode_jwt_payload to avoid duplicating decode logic.
     """
-    if not credentials or credentials.scheme.lower() != "bearer":
-        logger.warning("Missing or invalid Bearer token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = credentials.credentials
-    
-    try:
-        payload = jwt.decode(
-            token,
-            settings.jwt_secret,
-            algorithms=[settings.jwt_alg],
-        )
-    except JWTError as e:
-        logger.warning(f"JWT decode error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
+    payload = _decode_jwt_payload(credentials, context="get_current_user")
+
     username: Optional[str] = payload.get("sub")
     if not username:
         logger.warning("Token missing 'sub' claim")
@@ -106,71 +106,56 @@ def get_current_user(
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user = db.query(User).filter(User.username == username).first()
     if not user:
-        logger.warning(f"User not found: {username}")
+        logger.warning("Authenticated user not found in database")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-    
+
     logger.debug(f"User authenticated: {username}")
     return user
 
 
 def require_admin(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-) -> dict:
+    db: Session = Depends(get_db),
+) -> User:
     """
-    Dependency to require admin role.
-    
-    Args:
-        credentials: Bearer token from Authorization header
-        
-    Returns:
-        JWT payload dict
-        
-    Raises:
-        HTTPException: If not admin or authentication fails
+    БАГ №1 ВИПРАВЛЕНО: require_admin тепер повертає User з БД.
+
+    Раніше повертав dict (JWT payload) — це змушувало всі ендпоінти
+    додатково викликати get_current_user(db), що давало два декодування
+    JWT і два SQL-запити на кожен запит.
+
+    Тепер: один decode + один SQL-запит. Всі ендпоінти отримують
+    готовий User через require_admin, без потреби в get_current_user.
     """
-    if not credentials or credentials.scheme.lower() != "bearer":
-        logger.warning("Admin endpoint: Missing Bearer token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = credentials.credentials
-    
-    try:
-        payload = jwt.decode(
-            token,
-            settings.jwt_secret,
-            algorithms=[settings.jwt_alg],
-        )
-    except JWTError as e:
-        logger.warning(f"Admin endpoint: JWT decode error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    username = payload.get("sub")
-    role = payload.get("role")
-    
-    # Check admin privileges
-    if username != settings.admin_username or role != "admin":
+    payload = _decode_jwt_payload(credentials, context="require_admin")
+
+    username: Optional[str] = payload.get("sub")
+    role: Optional[str] = payload.get("role")
+
+    if not username or username != settings.admin_username or role != "admin":
         logger.warning(f"Access denied to admin endpoint: user={username}, role={role}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient privileges",
         )
-    
+
+    # Один запит до БД — повертаємо User напряму
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        logger.warning(f"Admin user '{username}' not found in database")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
     logger.debug(f"Admin access granted: {username}")
-    return payload
+    return user
 
 
 def get_optional_user(
@@ -180,27 +165,17 @@ def get_optional_user(
     """
     Dependency to optionally authenticate user.
     Returns None if no valid token provided.
-    
-    Args:
-        credentials: Bearer token from Authorization header
-        db: Database session
-        
-    Returns:
-        User instance or None
+    Uses shared _decode_jwt_payload (catches exceptions internally).
     """
     if not credentials or credentials.scheme.lower() != "bearer":
         return None
-    
+
     try:
-        payload = jwt.decode(
-            credentials.credentials,
-            settings.jwt_secret,
-            algorithms=[settings.jwt_alg],
-        )
+        payload = _decode_jwt_payload(credentials, context="get_optional_user")
         username = payload.get("sub")
         if username:
             return db.query(User).filter(User.username == username).first()
-    except JWTError:
+    except HTTPException:
         pass
-    
+
     return None

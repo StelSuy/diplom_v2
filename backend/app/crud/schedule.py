@@ -122,20 +122,21 @@ def ensure_all_employees_have_schedules(
     Повертає словник {employee_id: кількість_створених_записів}
     """
     from app.crud.employee import get_all
-    
+
+    # ВИПРАВЛЕНО: зламана логіка підрахунку (рахувала двічі, результат завжди 0)
+    _, last_day = monthrange(year, month)
+    date_from = date(year, month, 1)
+    date_to = date(year, month, last_day)
+
     employees = get_all(db)
     result = {}
-    
+
     for employee in employees:
-        schedules_before = len(get_or_create_empty_schedules(db, employee.id, year, month))
-        _, last_day = monthrange(year, month)
-        date_from = date(year, month, 1)
-        date_to = date(year, month, last_day)
         existing_count = len(get_range(db, date_from, date_to, employee.id))
-        
-        created_count = existing_count - (schedules_before - existing_count)
-        result[employee.id] = max(0, created_count)
-    
+        get_or_create_empty_schedules(db, employee.id, year, month)
+        new_count = len(get_range(db, date_from, date_to, employee.id))
+        result[employee.id] = max(0, new_count - existing_count)
+
     return result
 
 

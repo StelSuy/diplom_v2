@@ -6,9 +6,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 
+# БАГ №1 ВИПРАВЛЕНО: get_current_user вилучено — require_admin тепер повертає User
 from app.api.deps import require_admin, get_current_terminal
 from app.db.session import get_db
 from app.crud import terminal as terminal_crud
+from app.security.rate_limit import check_rate_limit
+from app.security.audit import audit_log
+from app.models.user import User
 
 from app.schemas.terminal import (
     TerminalRegisterRequest,
@@ -23,6 +27,7 @@ from app.crud.employee import create_employee_from_terminal_registration
 from app.crud.event import create_event_from_terminal_scan
 
 from app.security.verify import verify_signature
+from app.security.challenge_store import generate_challenge, consume_challenge, cleanup_expired
 from app.crud import employee as employee_crud
 from app.models.event import Event
 from app.models.terminal import Terminal
@@ -70,11 +75,14 @@ def _build_ws_payload(*, result: dict, employee, terminal, last_event=None) -> d
 # =========================
 # Admin-only router
 # =========================
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter()
 
 
 @router.get("/")
-def list_terminals(db: Session = Depends(get_db)):
+def list_terminals(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
     terminals = db.query(Terminal).all()
     return [
         {"id": t.id, "name": t.name, "api_key": t.api_key}
@@ -83,27 +91,63 @@ def list_terminals(db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_terminal(name: str, db: Session = Depends(get_db)):
+def create_terminal(
+    name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     existing = terminal_crud.get_by_name(db, name)
     if existing:
         return {"id": existing.id, "name": existing.name, "api_key": existing.api_key}
 
     term = terminal_crud.create_terminal(db, name=name)
+    audit_log("terminal_create", current_user.username, details={
+        "terminal_id": term.id, "name": term.name,
+    })
     return {"id": term.id, "name": term.name, "api_key": term.api_key}
 
 
 @router.post("/{terminal_id}/rotate_key")
-def rotate_key(terminal_id: int, db: Session = Depends(get_db)):
+def rotate_key(
+    terminal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     term = terminal_crud.rotate_api_key(db, terminal_id)
     if not term:
         raise HTTPException(status_code=404, detail="Terminal not found")
+    audit_log("terminal_rotate_key", current_user.username, details={
+        "terminal_id": term.id, "name": term.name,
+    })
     return {"id": term.id, "name": term.name, "api_key": term.api_key}
 
 
 # =========================
 # Public router for Android terminal app
 # =========================
-router_public = APIRouter(dependencies=[Depends(get_current_terminal)])
+router_public = APIRouter(dependencies=[Depends(get_current_terminal), Depends(check_rate_limit)])
+
+
+@router_public.post("/challenge")
+def get_challenge(
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """
+    Термінал запитує server-side challenge перед кожним сканом.
+    Request: {"terminal_id": 1}
+    Response: {"challenge_b64": "..."}
+    """
+    terminal_id = int(payload.get("terminal_id", 0))
+    if terminal_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid terminal_id")
+    _require_terminal_registered(db, terminal_id)
+
+    # Періодично чистимо старі challenges
+    cleanup_expired()
+
+    token = generate_challenge(terminal_id)
+    return {"challenge_b64": token}
 
 
 @router_public.post("/register", response_model=TerminalRegisterResponse)
@@ -182,7 +226,12 @@ async def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session =
         log.info("SECURE_SCAN employee has no public key")
         raise HTTPException(status_code=400, detail="Employee has no public key registered")
 
-    # 2) Перевірка підпису
+    # 2a) Перевірка server-side challenge (захист від replay attack)
+    if not consume_challenge(payload.challenge_b64, payload.terminal_id):
+        log.warning("SECURE_SCAN invalid/expired/replayed challenge")
+        return TerminalSecureScanResponse(ok=False, message="invalid_challenge", employee_id=None)
+
+    # 2b) Перевірка підпису
     ok = verify_signature(
         public_key_b64=employee.public_key_b64,
         challenge_b64=payload.challenge_b64,
@@ -223,6 +272,8 @@ async def terminal_secure_scan(payload: TerminalSecureScanRequest, db: Session =
             ok=True,
             message=result["message"],
             employee_id=result["employee_id"],
+            employee_name=employee.full_name if employee else None,
+            direction=last.direction if last else result.get("direction"),
         )
     except ValueError as e:
         log.warning(f"SECURE_SCAN 400: {str(e)}")

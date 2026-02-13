@@ -23,9 +23,12 @@ def get_by_uid(db: Session, uid: str) -> Employee | None:
 
 
 def update_employee(db: Session, emp: Employee, data: dict) -> Employee:
+    # БАГ №9 ВИПРАВЛЕНО: вилучено фільтр "if v is not None" —
+    # тепер PATCH може скинути поле в null (наприклад видалити comment).
+    # model_dump(exclude_unset=True) в роуті вже виключає невстановлені поля —
+    # тобто в data опиняться тільки значення що передав клієнт.
     for k, v in data.items():
-        if v is not None:
-            setattr(emp, k, v)
+        setattr(emp, k, v)
     db.commit()
     db.refresh(emp)
     return emp

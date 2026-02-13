@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin, get_current_user
+# БАГ №1 ВИПРАВЛЕНО: get_current_user вилучено — require_admin тепер повертає User
+from app.api.deps import require_admin
 from app.core.time import WARSAW, to_utc
 from app.crud import employee as employee_crud
 from app.db.session import get_db
@@ -15,6 +16,7 @@ from app.models.user import User
 
 import logging
 
+from app.security.audit import audit_log
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +47,11 @@ class ManualEventResponse(BaseModel):
         from_attributes = True
 
 
-@router.post("", response_model=dict, dependencies=[Depends(require_admin)])
+@router.post("", response_model=dict)
 def create_manual_event(
     payload: ManualEventCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     """
     Створити подію вручну (тільки для адміністраторів).
@@ -88,7 +90,7 @@ def create_manual_event(
                 detail="Невірний формат timestamp (очікується ISO: YYYY-MM-DDTHH:MM:SS)"
             )
 
-        # Створення події з UTC timestamp
+        # БАГ №2 ВИПРАВЛЕНО: datetime.utcnow() замінено на datetime.now(timezone.utc)
         event = Event(
             employee_id=payload.employee_id,
             ts=dt_utc,  # Зберігаємо UTC
@@ -97,7 +99,7 @@ def create_manual_event(
             is_manual=True,
             created_by_user_id=current_user.id,
             comment=payload.comment,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         db.add(event)
@@ -109,6 +111,11 @@ def create_manual_event(
             f"ts_utc={dt_utc.isoformat()}, ts_local={dt_warsaw.isoformat()}, "
             f"direction={payload.direction}, admin={current_user.username}"
         )
+
+        audit_log("manual_event_create", current_user.username, details={
+            "event_id": event.id, "employee_id": payload.employee_id,
+            "direction": payload.direction, "ts_local": dt_warsaw.isoformat(),
+        })
 
         return {
             "id": event.id,
@@ -126,10 +133,11 @@ def create_manual_event(
         raise HTTPException(status_code=500, detail=f"Не вдалося створити подію: {str(e)}")
 
 
-@router.get("", response_model=list[dict], dependencies=[Depends(require_admin)])
+@router.get("", response_model=list[dict])
 def get_manual_events(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
 ):
     """
     Отримати список ручних подій.
@@ -176,11 +184,11 @@ def get_manual_events(
         raise HTTPException(status_code=500, detail=f"Не вдалося отримати події: {str(e)}")
 
 
-@router.delete("/{event_id}", dependencies=[Depends(require_admin)])
+@router.delete("/{event_id}")
 def delete_manual_event(
         event_id: int,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(require_admin),
 ):
     """
     Видалити ручну подію (тільки для адміністраторів).
@@ -209,6 +217,10 @@ def delete_manual_event(
             f"employee_id={event.employee_id}, admin={current_user.username}"
         )
 
+        audit_log("manual_event_delete", current_user.username, details={
+            "event_id": event_id, "employee_id": event.employee_id,
+        })
+
         return {"success": True, "deleted_id": event_id}
 
     except HTTPException:
@@ -219,11 +231,65 @@ def delete_manual_event(
         raise HTTPException(status_code=500, detail=f"Не вдалося видалити подію: {str(e)}")
 
 
-@router.get("/date/{employee_id}/{date}", dependencies=[Depends(require_admin)])
+@router.delete("/day/{employee_id}/{date}")
+def delete_events_for_day(
+        employee_id: int,
+        date: str,  # YYYY-MM-DD
+        db: Session = Depends(get_db),
+        current_user: User = Depends(require_admin),
+):
+    """
+    Видалити ВСІ події співробітника за конкретну дату (Europe/Warsaw).
+    Використовується для очистки статистики за день.
+    """
+    logger.info(f"delete_events_for_day: employee_id={employee_id}, date={date}, admin={current_user.username}")
+
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+
+        start_warsaw = datetime.combine(date_obj, time.min).replace(tzinfo=WARSAW)
+        end_warsaw = start_warsaw + timedelta(days=1)
+        start_utc = to_utc(start_warsaw).replace(tzinfo=None)
+        end_utc = to_utc(end_warsaw).replace(tzinfo=None)
+
+        events = (
+            db.query(Event)
+            .filter(Event.employee_id == employee_id)
+            .filter(Event.ts >= start_utc)
+            .filter(Event.ts < end_utc)
+            .all()
+        )
+
+        count = len(events)
+        for ev in events:
+            db.delete(ev)
+        db.commit()
+
+        logger.info(
+            f"Видалено {count} подій за {date} для employee_id={employee_id}, "
+            f"admin={current_user.username}"
+        )
+
+        audit_log("clear_day_events", current_user.username, details={
+            "employee_id": employee_id, "date": date, "deleted_count": count,
+        })
+
+        return {"success": True, "deleted_count": count, "date": date, "employee_id": employee_id}
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Невірний формат дати (очікується YYYY-MM-DD)")
+    except Exception as e:
+        logger.exception("Помилка видалення подій за день")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Помилка: {str(e)}")
+
+
+@router.get("/date/{employee_id}/{date}")
 def get_events_for_date(
         employee_id: int,
         date: str,  # YYYY-MM-DD (локальна дата Europe/Warsaw)
         db: Session = Depends(get_db),
+        _: User = Depends(require_admin),
 ):
     """
     Отримати всі ручні події для співробітника на конкретну дату (Europe/Warsaw).

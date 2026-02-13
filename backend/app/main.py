@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.api.router import api_router
+from app.api.routes.auth import init_admin_hash
 from app.ws.routes import router as ws_router
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -46,7 +47,11 @@ async def on_startup():
     logger.info(f"Starting {settings.app_name} in {settings.env} mode")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"CORS origins: {settings.cors_origins}")
-    
+
+    # БАГ №3 ВИПРАВЛЕНО: хешуємо пароль адміна один раз при старті
+    # (безпечно працює з будь-якою кількістю gunicorn воркерів)
+    init_admin_hash()
+
     # Seed demo data
     try:
         db = SessionLocal()

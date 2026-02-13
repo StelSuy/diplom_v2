@@ -4,13 +4,12 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.event import NFCEventCreate
 from app.crud import employee as employee_crud
-from app.crud import terminal as terminal_crud
 from app.crud import event as event_crud
 from app.models.terminal import Terminal
 from app.api.deps import get_current_terminal
 
-
-router = APIRouter()
+# ВИПРАВЛЕНО: вилучено невикористовуваний імпорт terminal_crud
+router = APIRouter(tags=["events"])
 
 
 @router.post("/nfc")
@@ -24,15 +23,12 @@ def create_nfc_event(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found by nfc_uid")
 
-    # Терминал берём из ключа (не доверяем terminal_name из payload)
-    # Но можем проверить/обновить имя (необязательно). MVP: если не совпало — игнорируем payload.name.
-    term = terminal
-
+    # Термінал беремо з ключа (не довіряємо terminal_name з payload)
     try:
         ev = event_crud.create_event(
             db=db,
             employee_id=emp.id,
-            terminal_id=term.id,
+            terminal_id=terminal.id,
             direction=payload.direction,
             ts=payload.ts,
         )
@@ -49,6 +45,6 @@ def create_nfc_event(
             "ts": ev.ts.isoformat(),
         },
         "employee": {"id": emp.id, "full_name": emp.full_name},
-        "terminal": {"id": term.id, "name": term.name},
+        "terminal": {"id": terminal.id, "name": terminal.name},
     }
 

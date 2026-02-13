@@ -55,3 +55,5 @@ class TerminalSecureScanResponse(BaseModel):
     ok: bool
     message: str
     employee_id: Optional[int] = None
+    employee_name: Optional[str] = None
+    direction: Optional[str] = None

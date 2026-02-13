@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.employee import Employee
+from app.security.rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(check_rate_limit)])
 
 
 class FirstScanRequest(BaseModel):

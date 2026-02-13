@@ -326,9 +326,13 @@ def schedule_pdf(
 
         days = list(_daterange(date_from, date_to))
 
-        # Формуємо заголовки
-        header = ["№", "ПІБ", "Посада"] + [d.strftime("%d") for d in days]
-        data: list[list[str]] = [header]
+        # Українські скорочення днів тижня (0=Пн ... 6=Нд)
+        _DAY_NAMES_UA = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
+
+        # Формуємо два рядки заголовків: число + день тижня
+        header_row1 = ["№", "ПІБ", "Посада"] + [d.strftime("%d") for d in days]
+        header_row2 = ["", "", ""] + [_DAY_NAMES_UA[d.weekday()] for d in days]
+        data: list[list[str]] = [header_row1, header_row2]
 
         # Формуємо рядки для кожного співробітника
         for i, e in enumerate(employees, start=1):
@@ -383,41 +387,57 @@ def schedule_pdf(
         day_width = remaining_width / num_days
         col_widths.extend([day_width] * num_days)
 
-        # Створюємо таблицю
-        tbl = Table(data, colWidths=col_widths, repeatRows=1)
+        # Створюємо таблицю (repeatRows=2 — два рядки заголовка)
+        tbl = Table(data, colWidths=col_widths, repeatRows=2)
 
         # Стилі таблиці
         table_style = [
-            # Заголовок
+            # === Заголовок — рядок 0 (числа) ===
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a90e2")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
             ("FONTNAME", (0, 0), (-1, 0), font_name),
             ("FONTSIZE", (0, 0), (-1, 0), 9),
-            ("FONTNAME", (0, 0), (0, 0), font_name),  # №
 
-            # Дані
-            ("FONTNAME", (0, 1), (-1, -1), font_name),
-            ("FONTSIZE", (0, 1), (-1, -1), 7),
+            # === Заголовок — рядок 1 (дні тижня) ===
+            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#3a7bd5")),
+            ("TEXTCOLOR", (0, 1), (-1, 1), colors.whitesmoke),
+            ("FONTNAME", (0, 1), (-1, 1), font_name),
+            ("FONTSIZE", (0, 1), (-1, 1), 7),
 
-            # Вирівнювання
-            ("ALIGN", (0, 0), (0, -1), "CENTER"),  # №
-            ("ALIGN", (1, 0), (2, -1), "LEFT"),  # ПІБ, Посада
-            ("ALIGN", (3, 0), (-1, -1), "CENTER"),  # Дні
+            # === Дані ===
+            ("FONTNAME", (0, 2), (-1, -1), font_name),
+            ("FONTSIZE", (0, 2), (-1, -1), 7),
+
+            # === Вирівнювання ===
+            ("ALIGN", (0, 0), (0, -1), "CENTER"),   # №
+            ("ALIGN", (1, 0), (2, -1), "LEFT"),      # ПІБ, Посада
+            ("ALIGN", (3, 0), (-1, -1), "CENTER"),   # Дні
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
 
-            # Рамки
+            # === Рамки ===
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
             ("BOX", (0, 0), (-1, -1), 1, colors.black),
 
-            # Чергування кольорів
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+            # === Чергування кольорів (після 2 заголовків) ===
+            ("ROWBACKGROUNDS", (0, 2), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
 
-            # Відступи
+            # === Відступи ===
             ("LEFTPADDING", (0, 0), (-1, -1), 3),
             ("RIGHTPADDING", (0, 0), (-1, -1), 3),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ]
+
+        # === Виділяємо вихідні (Сб, Нд) кольором у заголовку і колонках ===
+        weekend_bg_header = colors.HexColor("#c0392b")
+        weekend_bg_data = colors.HexColor("#fdeaea")
+        for di, d in enumerate(days):
+            col = 3 + di  # колонка дня
+            if d.weekday() >= 5:  # Сб=5, Нд=6
+                table_style.append(("BACKGROUND", (col, 0), (col, 0), weekend_bg_header))
+                table_style.append(("BACKGROUND", (col, 1), (col, 1), weekend_bg_header))
+                # Легкий фон для даних
+                table_style.append(("BACKGROUND", (col, 2), (col, -1), weekend_bg_data))
 
         tbl.setStyle(TableStyle(table_style))
         story.append(tbl)

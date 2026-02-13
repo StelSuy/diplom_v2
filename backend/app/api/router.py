@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import auth, employees, events, schedules, stats, terminals, register, manual_events
+from app.api.routes import auth, employees, events, schedules, stats, terminals, register, manual_events, audit_log, users
 
 api_router = APIRouter()
 
@@ -24,3 +24,9 @@ api_router.include_router(terminals.router_public, prefix="/terminal", tags=["te
 
 # Manual events (admin only) - prefix already in manual_events.router
 api_router.include_router(manual_events.router)
+
+# Audit log (admin only)
+api_router.include_router(audit_log.router)
+
+# Users management (admin only)
+api_router.include_router(users.router)

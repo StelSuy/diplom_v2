@@ -29,5 +29,6 @@ async def ws_scans(ws: WebSocket):
             await ws.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(ws)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"WS unexpected error, disconnecting: {e}")
         ws_manager.disconnect(ws)
