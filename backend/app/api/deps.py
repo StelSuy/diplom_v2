@@ -4,6 +4,7 @@ FastAPI dependencies for authentication and authorization.
 import logging
 from typing import Optional
 
+from datetime import datetime, timezone
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -84,6 +85,13 @@ def get_current_terminal(
             detail="Invalid terminal key",
         )
     
+    # Оновлюємо час останнього з'єднання
+    try:
+        terminal.last_seen_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception:
+        db.rollback()
+
     logger.debug(f"Terminal authenticated: {terminal.name}")
     return terminal
 

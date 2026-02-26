@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 _challenges: dict[str, tuple[int, float]] = {}
 _lock = threading.Lock()
 
+# УВАГА: цей store зберігає дані в пам'яті одного процесу.
+# При запуску з кількома gunicorn workers (--workers > 1)
+# challenge виданий одним воркером не буде знайдено іншим.
+# Для прода з кількома воркерами — перенести на Redis або uvicorn --workers 1.
+
 # Challenge is valid for 30 seconds
 CHALLENGE_TTL_SECONDS = 30
 

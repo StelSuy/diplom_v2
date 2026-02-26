@@ -3852,26 +3852,32 @@ function showTerminalQr(terminalId, terminalName, apiKey) {
   const qr = qrcode(0, 'M');
   qr.addData(payload);
   qr.make();
-
+  
   const moduleCount = qr.getModuleCount();
-  const cellSize = Math.max(4, Math.floor(280 / moduleCount));
-  const size = moduleCount * cellSize;
+  const QUIET = 4; // обов'язкова тиха зона навколо QR (4 модулі)
+  const cellSize = Math.max(6, Math.floor(320 / (moduleCount + QUIET * 2)));
+  const size = (moduleCount + QUIET * 2) * cellSize;
 
   const canvas = document.getElementById('qrCanvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
 
-  // Білий фон
+  // Білий фон (включно з quiet zone)
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, size, size);
 
-  // Чорні модулі
+  // Чорні модулі зі зміщенням на quiet zone
   ctx.fillStyle = '#000000';
   for (let row = 0; row < moduleCount; row++) {
     for (let col = 0; col < moduleCount; col++) {
       if (qr.isDark(row, col)) {
-        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+        ctx.fillRect(
+          (col + QUIET) * cellSize,
+          (row + QUIET) * cellSize,
+          cellSize,
+          cellSize
+        );
       }
     }
   }

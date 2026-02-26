@@ -85,7 +85,12 @@ def list_terminals(
 ):
     terminals = db.query(Terminal).all()
     return [
-        {"id": t.id, "name": t.name, "api_key": t.api_key}
+        {
+            "id": t.id,
+            "name": t.name,
+            "api_key": t.api_key,
+            "last_seen_at": t.last_seen_at.isoformat() if t.last_seen_at else None,
+        }
         for t in terminals
     ]
 

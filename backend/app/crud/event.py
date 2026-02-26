@@ -118,7 +118,9 @@ def create_event_from_terminal_scan(db: Session, payload: TerminalScanRequest) -
                 "message": f"cooldown_wait_{wait_left}s",
             }
 
-    # Авто-определение направления
+    # Авто-toggle: сервер сам визначає напрям на основі останньої події.
+    # Термінал надсилає direction лише як підказку для ручних сканів,
+    # але для автоматики завжди використовується toggle IN->OUT->IN.
     if last and (last.direction or "").upper().strip() == "IN":
         direction = "OUT"
     else:
