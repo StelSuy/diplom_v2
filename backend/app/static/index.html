@@ -1146,6 +1146,7 @@ body[data-theme="light"] {
               <tr>
                 <th>ID</th>
                 <th>Назва</th>
+                <th>Статус</th>
                 <th>API-ключ</th>
                 <th>Дії</th>
               </tr>
@@ -3917,11 +3918,30 @@ function renderTerminalsTable(terminals) {
     return;
   }
 
-  terminals.forEach(t => {
+terminals.forEach(t => {
     const tr = document.createElement('tr');
+
+    // Визначаємо статус по last_seen_at
+    let statusHtml;
+    if (!t.last_seen_at) {
+      statusHtml = `<span title="Ніколи не підключався">⚫ Немає даних</span>`;
+    } else {
+      const secAgo = (Date.now() - new Date(t.last_seen_at).getTime()) / 1000;
+      if (secAgo < 300) {         // < 5 хв
+        const m = Math.floor(secAgo / 60);
+        const s = Math.floor(secAgo % 60);
+        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🟢 ${m}хв ${s}с тому</span>`;
+      } else if (secAgo < 3600) { // < 1 год
+        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🟡 ${Math.floor(secAgo/60)} хв тому</span>`;
+      } else {
+        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🔴 ${Math.floor(secAgo/3600)} год тому</span>`;
+      }
+    }
+
     tr.innerHTML = `
       <td>${t.id}</td>
       <td>${escapeHtml(t.name)}</td>
+      <td>${statusHtml}</td>
       <td>
         <div style="display:flex; align-items:center; gap:8px;">
           <code id="key-${t.id}" style="font-size:12px; word-break:break-all; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">${escapeHtml(t.api_key)}</code>
