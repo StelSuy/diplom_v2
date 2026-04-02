@@ -94,6 +94,7 @@ static/uploads/
 *.backup
 tmp/
 temp/
+_trash/
 
 # ===========================================
 # Alembic
@@ -110,5 +111,4 @@ dmypy.json
 # ===========================================
 # Keep Important Files
 # ===========================================
-!favicon.ico
 !README.md
