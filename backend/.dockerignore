@@ -16,12 +16,12 @@ venv/
 env/
 
 # Среда и секреты
-.env
-*.env.local
+# .env
+# *.env.local
 
 # Docker
-docker-compose*.yml
-Dockerfile*
+# docker-compose*.yml
+# Dockerfile*
 
 # IDE
 .vscode/
