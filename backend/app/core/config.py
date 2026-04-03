@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # Admin
     admin_username: str = "admin"
-    admin_password: str
+    admin_password: str = "admin"
 
     # Terminal
     terminal_scan_cooldown_seconds: int = 5

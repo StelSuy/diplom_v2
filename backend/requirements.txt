@@ -25,8 +25,14 @@ bcrypt==4.2.1
 python-dotenv==1.0.1
 python-multipart==0.0.20
 
-# PDF Generation (optional)
+# Timezone data (required on Windows)
+tzdata==2024.2
+
+# PDF Generation
 reportlab==4.2.5
 
-# Production Server (optional)
+# XLSX Export
+openpyxl==3.1.5
+
+# Production Server
 gunicorn==23.0.0

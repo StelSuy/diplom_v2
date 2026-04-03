@@ -652,6 +652,9 @@ body[data-theme="light"] {
   <button class="tab-btn" onclick="openTab('manualEntry')">Ручний ввід</button>
   <button class="tab-btn" onclick="openTab('terminalsTab')">Термінали</button>
   <button class="tab-btn" onclick="openTab('auditTab')">Журнал дій</button>
+  <button class="tab-btn" onclick="openTab('usersTab')">Адміністратори</button>
+  <button class="tab-btn" onclick="openTab('positionsTab')">Посади</button>
+  <button class="tab-btn" onclick="openTab('exportTab')">Експорт</button>
 </div>
 
   <!-- ================= DASHBOARD ================= -->
@@ -780,6 +783,8 @@ body[data-theme="light"] {
         <div class="box">
           <div style="font-weight:950;">Статистика / План vs факт</div>
 
+    <label>Пошук співробітника</label>
+          <input id="statsEmpSearch" placeholder="ПІБ, ID..." oninput="statsApplyEmpFilter()" style="margin-bottom:6px;" />
           <label>Співробітник</label>
           <select id="empSelect"></select>
 
@@ -1168,6 +1173,20 @@ body[data-theme="light"] {
           <div id="terminalInfo" class="info" style="margin-top:10px; display:none;"></div>
           <div id="terminalError" class="error" style="margin-top:10px;"></div>
         </div>
+
+        <div class="box">
+          <div style="font-weight:950; margin-bottom:4px;">⚙️ IP-адреса сервера для QR-кодів</div>
+          <div class="muted" style="margin-bottom:10px;">Якщо адмін-панель відкрита через <code>localhost</code>, Android-термінал не зможе підключитися по такій адресі. Вкажіть реальну IP-адресу ПК в локальній мережі — вона буде вбудована в QR-коди.</div>
+          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <label>IP-адреса ПК (наприклад: 192.168.1.100)</label>
+              <input id="serverIpInput" placeholder="192.168.1.xxx" value="" />
+            </div>
+            <button class="btn" onclick="applyServerIp()">Зберегти IP</button>
+            <button class="btn secondary" onclick="clearServerIp()">Скинути</button>
+          </div>
+          <div id="serverIpInfo" class="info" style="margin-top:8px; display:none;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1326,8 +1345,7 @@ body[data-theme="light"] {
             <button class="btn secondary" onclick="loadAuditLog()">Оновити</button>
           </div>
 
-          <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:flex-end;">
-            <div style="flex:1; min-width:200px;">
+        <div style="flex:1; min-width:160px;">
               <label>Фільтр по дії</label>
               <select id="auditActionFilter" onchange="loadAuditLog()">
                 <option value="">Всі дії</option>
@@ -1342,11 +1360,22 @@ body[data-theme="light"] {
                 <option value="500">500</option>
               </select>
             </div>
+            <div style="min-width:140px;">
+              <label>Адміністратор</label>
+              <input id="auditAdminFilter" placeholder="username..." oninput="loadAuditLog()" />
+            </div>
+            <div style="min-width:130px;">
+              <label>Дата від</label>
+              <input id="auditDateFrom" type="date" onchange="loadAuditLog()" />
+            </div>
+            <div style="min-width:130px;">
+              <label>Дата до</label>
+              <input id="auditDateTo" type="date" onchange="loadAuditLog()" />
+            </div>
             <div style="min-width:200px;">
               <label>Пошук по тексту</label>
               <input id="auditSearch" placeholder="ПІБ, ID, дія..." oninput="auditApplyFilter()" />
             </div>
-          </div>
 
           <div id="auditSummary" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
         </div>
@@ -1368,6 +1397,177 @@ body[data-theme="light"] {
       </div>
     </div>
   </div>
+
+<!-- ================= USERS (Адміністратори) ================= -->
+<div id="usersTab" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <div class="box">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:950; font-size:16px;">Адміністратори</div>
+          <button class="btn secondary" onclick="loadUsers()">Оновити</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">Управління обліковими записами. Тільки admin може створювати/видаляти.</div>
+      </div>
+
+      <table id="usersTable">
+        <thead>
+          <tr><th>ID</th><th>Логін</th><th>Роль</th><th>Дії</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:8px;">Створити адміністратора</div>
+
+        <label>Логін</label>
+        <input id="newUserLogin" placeholder="username" />
+
+        <label>Пароль</label>
+        <input id="newUserPassword" type="password" placeholder="мін. 6 символів" />
+
+        <label>Роль</label>
+        <select id="newUserRole">
+          <option value="admin">admin — повний доступ</option>
+          <option value="manager">manager — обмежений доступ</option>
+        </select>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" onclick="createUser()">Створити</button>
+        </div>
+        <div id="userCreateInfo" class="info" style="display:none; margin-top:10px;"></div>
+        <div id="userCreateError" class="error" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="box" id="userEditBox" style="display:none;">
+        <div style="font-weight:950; margin-bottom:8px;">Редагувати: <span id="userEditName"></span></div>
+        <input type="hidden" id="userEditId" />
+
+        <label>Новий пароль (залишити порожнім — без змін)</label>
+        <input id="userEditPassword" type="password" placeholder="мін. 6 символів або порожньо" />
+
+        <label>Роль</label>
+        <select id="userEditRole">
+          <option value="admin">admin</option>
+          <option value="manager">manager</option>
+        </select>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" onclick="saveUserEdit()">Зберегти</button>
+          <button class="btn secondary" onclick="cancelUserEdit()">Скасувати</button>
+        </div>
+        <div id="userEditInfo" class="info" style="display:none; margin-top:10px;"></div>
+        <div id="userEditError" class="error" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= POSITIONS (Посади) ================= -->
+<div id="positionsTab" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <div class="box">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div style="font-weight:950; font-size:16px;">Довідник посад</div>
+          <button class="btn secondary" onclick="loadPositions()">Оновити</button>
+        </div>
+      </div>
+
+      <table id="positionsTable">
+        <thead>
+          <tr><th>ID</th><th>Назва</th><th>Активна</th><th>Дії</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:8px;">Додати посаду</div>
+
+        <label>Назва посади</label>
+        <input id="newPositionName" placeholder="Наприклад: Менеджер з продажу" />
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" onclick="createPosition()">Додати</button>
+        </div>
+        <div id="posCreateInfo" class="info" style="display:none; margin-top:10px;"></div>
+        <div id="posCreateError" class="error" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="box" id="posEditBox" style="display:none;">
+        <div style="font-weight:950; margin-bottom:8px;">Редагувати посаду</div>
+        <input type="hidden" id="posEditId" />
+
+        <label>Нова назва</label>
+        <input id="posEditName" />
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" onclick="savePosEdit()">Зберегти</button>
+          <button class="btn secondary" onclick="cancelPosEdit()">Скасувати</button>
+        </div>
+        <div id="posEditInfo" class="info" style="display:none; margin-top:10px;"></div>
+        <div id="posEditError" class="error" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EXPORT ================= -->
+<div id="exportTab" class="tab-content">
+  <div class="row">
+    <div class="col">
+      <div class="box">
+        <div style="font-weight:950; font-size:16px; margin-bottom:12px;">📊 Експорт звіту обліку праці</div>
+
+        <div class="grid2">
+          <div>
+            <label>Дата від</label>
+            <input id="exportDateFrom" type="date" />
+          </div>
+          <div>
+            <label>Дата до</label>
+            <input id="exportDateTo" type="date" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label>Співробітник (необов'язково — залишити порожнім для всіх)</label>
+          <select id="exportEmpSelect">
+            <option value="">Всі співробітники</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+          <button class="btn" onclick="exportReport('csv')">⬇️ Завантажити CSV</button>
+          <button class="btn secondary" onclick="exportReport('xlsx')">⬇️ Завантажити XLSX (Excel)</button>
+        </div>
+
+        <div id="exportInfo" class="info" style="display:none; margin-top:10px;"></div>
+        <div id="exportError" class="error" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="box">
+        <div style="font-weight:950; margin-bottom:8px;">Що входить до звіту</div>
+        <div class="info" style="display:block; margin-top:0;">
+          Звіт містить по кожному співробітнику:<br>
+          • ПІБ та посада<br>
+          • Відпрацьовано годин (год:хв:с)<br>
+          • Кількість робочих днів<br>
+          • Кількість запізнень (прихід після 09:10)<br>
+          • Понаднормово відпрацьовано (хвилин)<br><br>
+          CSV відкривається в Excel (кодування UTF-8 BOM, роздільник ";").<br>
+          XLSX — стилізований файл з підсумком.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 <script>
   const API_ROOT = "/api";
@@ -1531,10 +1731,32 @@ body[data-theme="light"] {
       }
       if (tabId === 'terminalsTab') {
           loadTerminals();
+          // Ініціалізуємо поле IP з збереженого значення
+          const ipInp = document.getElementById('serverIpInput');
+          if (ipInp && _serverIpOverride) ipInp.value = _serverIpOverride;
       }
       if (tabId === 'auditTab') {
         auditInitActionFilter();
         loadAuditLog();
+      }
+      if (tabId === 'usersTab') {
+        loadUsers();
+      }
+      if (tabId === 'positionsTab') {
+        loadPositions();
+      }
+      if (tabId === 'exportTab') {
+        // Заповнити список співробітників для фільтру
+        const sel = document.getElementById('exportEmpSelect');
+        if (sel && _employeesCache.length) {
+          sel.innerHTML = '<option value="">Всі співробітники</option>';
+          _employeesCache.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = `${e.full_name} (ID:${e.id})`;
+            sel.appendChild(opt);
+          });
+        }
       }
     }
 
@@ -3835,9 +4057,30 @@ async function submitClearDay() {
 
 // ======================= QR CODE =======================
 
+// Якщо відкрито через localhost — зберігаємо IP для QR
+let _serverIpOverride = localStorage.getItem('server_ip_override') || '';
+
+function setServerIpOverride(ip) {
+  _serverIpOverride = ip.trim();
+  if (_serverIpOverride) {
+    localStorage.setItem('server_ip_override', _serverIpOverride);
+  } else {
+    localStorage.removeItem('server_ip_override');
+  }
+}
+
 function showTerminalQr(terminalId, terminalName, apiKey) {
-  // Визначаємо server URL (той самий, де зараз відкрита панель)
-  const serverUrl = `${location.protocol}//${location.host}`;
+  // Якщо відкрито через localhost/127.0.0.1 — використовуємо IP з поля override
+  const rawHost = location.hostname;
+  const isLocal = rawHost === 'localhost' || rawHost === '127.0.0.1' || rawHost === '::1';
+  const port = location.port ? `:${location.port}` : '';
+
+  let serverUrl;
+  if (isLocal && _serverIpOverride) {
+    serverUrl = `${location.protocol}//${_serverIpOverride}${port}`;
+  } else {
+    serverUrl = `${location.protocol}//${location.host}`;
+  }
 
   const payload = JSON.stringify({
     server: serverUrl,
@@ -3888,6 +4131,34 @@ function showTerminalQr(terminalId, terminalName, apiKey) {
 
 function closeQrModal() {
   document.getElementById('qrBackdrop').classList.remove('show');
+}
+
+function applyServerIp() {
+  const ip = (document.getElementById('serverIpInput')?.value || '').trim();
+  const infoEl = document.getElementById('serverIpInfo');
+  if (!ip) {
+    infoEl.textContent = '⚠️ Введіть IP-адресу';
+    infoEl.style.display = 'block';
+    return;
+  }
+  // Проста валідація IPv4
+  const ipv4re = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!ipv4re.test(ip)) {
+    infoEl.textContent = '⚠️ Формат: 192.168.1.100';
+    infoEl.style.display = 'block';
+    return;
+  }
+  setServerIpOverride(ip);
+  infoEl.textContent = `✅ IP збережено: ${ip} — буде вбудовано в QR-коди`;
+  infoEl.style.display = 'block';
+}
+
+function clearServerIp() {
+  setServerIpOverride('');
+  const inp = document.getElementById('serverIpInput');
+  if (inp) inp.value = '';
+  const infoEl = document.getElementById('serverIpInfo');
+  if (infoEl) { infoEl.textContent = '✅ IP скинуто — QR будуть використовувати поточний host'; infoEl.style.display = 'block'; }
 }
 
 // ======================= TERMINALS =======================
@@ -4084,15 +4355,21 @@ async function auditInitActionFilter() {
 }
 
 async function loadAuditLog() {
-  const limit  = parseInt(document.getElementById('auditLimit')?.value || '100');
-  const action = document.getElementById('auditActionFilter')?.value || '';
+  const limit     = parseInt(document.getElementById('auditLimit')?.value || '100');
+  const action    = document.getElementById('auditActionFilter')?.value || '';
+  const adminF    = (document.getElementById('auditAdminFilter')?.value || '').trim();
+  const dateFrom  = document.getElementById('auditDateFrom')?.value || '';
+  const dateTo    = document.getElementById('auditDateTo')?.value || '';
 
   const tbody = document.querySelector('#auditTable tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Завантаження…</td></tr>';
 
   try {
     let url = `/audit/log?limit=${limit}`;
-    if (action) url += `&action=${encodeURIComponent(action)}`;
+    if (action)   url += `&action=${encodeURIComponent(action)}`;
+    if (adminF)   url += `&admin_username=${encodeURIComponent(adminF)}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo)   url += `&date_to=${dateTo}`;
 
     const res = await apiFetch(url);
     if (!res.ok) {
@@ -4236,6 +4513,363 @@ function auditRenderTable(entries) {
     tbody.appendChild(tr);
   });
 }
+
+
+// ======================= USERS (Адміністратори) =======================
+
+async function loadUsers() {
+  const tbody = document.querySelector('#usersTable tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Завантаження…</td></tr>';
+  try {
+    const res = await apiFetch('/users/');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const users = await res.json();
+    renderUsersTable(users);
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color:var(--bad);padding:12px;">Помилка: ${escapeHtml(String(e.message))}</td></tr>`;
+  }
+}
+
+function renderUsersTable(users) {
+  const tbody = document.querySelector('#usersTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Немає користувачів</td></tr>';
+    return;
+  }
+  users.forEach(u => {
+    const tr = document.createElement('tr');
+    const roleColor = u.role === 'admin' ? 'var(--bad)' : 'var(--warn)';
+    tr.innerHTML = `
+      <td>${u.id}</td>
+      <td style="font-weight:900;">${escapeHtml(u.username)}</td>
+      <td><span class="badge" style="color:${roleColor};">${escapeHtml(u.role)}</span></td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn secondary" style="padding:5px 10px;font-size:11px;" onclick="openUserEdit(${u.id},'${escapeHtml(u.username)}','${escapeHtml(u.role)}')">✏️ Редагувати</button>
+          <button class="btn secondary" style="padding:5px 10px;font-size:11px;background:rgba(255,77,77,0.12);border-color:rgba(255,77,77,0.30);color:#ff8b8b;" onclick="deleteUser(${u.id},'${escapeHtml(u.username)}')">🗑️ Видалити</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function createUser() {
+  const login = document.getElementById('newUserLogin').value.trim();
+  const pass  = document.getElementById('newUserPassword').value;
+  const role  = document.getElementById('newUserRole').value;
+  const errEl = document.getElementById('userCreateError');
+  const infoEl = document.getElementById('userCreateInfo');
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  if (!login) { errEl.textContent = 'Введіть логін'; errEl.style.display = 'block'; return; }
+  if (pass.length < 6) { errEl.textContent = 'Пароль мінімум 6 символів'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await apiFetch('/users/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: login, password: pass, role})
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(fmtJsonError(txt));
+    }
+    const data = await res.json();
+    document.getElementById('newUserLogin').value = '';
+    document.getElementById('newUserPassword').value = '';
+    infoEl.textContent = `✅ Створено: ${data.username} (${data.role})`;
+    infoEl.style.display = 'block';
+    await loadUsers();
+  } catch(e) {
+    errEl.textContent = String(e.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+function openUserEdit(id, username, role) {
+  document.getElementById('userEditId').value = id;
+  document.getElementById('userEditName').textContent = username;
+  document.getElementById('userEditPassword').value = '';
+  document.getElementById('userEditRole').value = role;
+  document.getElementById('userEditError').style.display = 'none';
+  document.getElementById('userEditInfo').style.display = 'none';
+  document.getElementById('userEditBox').style.display = 'block';
+  document.getElementById('userEditBox').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelUserEdit() {
+  document.getElementById('userEditBox').style.display = 'none';
+}
+
+async function saveUserEdit() {
+  const id = document.getElementById('userEditId').value;
+  const pass = document.getElementById('userEditPassword').value;
+  const role = document.getElementById('userEditRole').value;
+  const errEl = document.getElementById('userEditError');
+  const infoEl = document.getElementById('userEditInfo');
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  const body = {role};
+  if (pass) {
+    if (pass.length < 6) { errEl.textContent = 'Пароль мінімум 6 символів'; errEl.style.display = 'block'; return; }
+    body.password = pass;
+  }
+
+  try {
+    const res = await apiFetch(`/users/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    infoEl.textContent = '✅ Збережено';
+    infoEl.style.display = 'block';
+    await loadUsers();
+    setTimeout(() => cancelUserEdit(), 1500);
+  } catch(e) {
+    errEl.textContent = String(e.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`Видалити користувача "${username}"? Цю дію не можна відмінити.`)) return;
+  try {
+    const res = await apiFetch(`/users/${id}`, {method:'DELETE'});
+    if (!res.ok && res.status !== 204) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    await loadUsers();
+  } catch(e) {
+    alert('Помилка: ' + String(e.message || e));
+  }
+}
+
+// ======================= POSITIONS (Посади) =======================
+
+let _positionsCache = [];
+
+async function loadPositions() {
+  const tbody = document.querySelector('#positionsTable tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Завантаження…</td></tr>';
+  try {
+    const res = await apiFetch('/positions/?include_inactive=true');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _positionsCache = await res.json();
+    renderPositionsTable(_positionsCache);
+    populatePositionSelects();
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color:var(--bad);padding:12px;">Помилка: ${escapeHtml(String(e.message))}</td></tr>`;
+  }
+}
+
+function renderPositionsTable(positions) {
+  const tbody = document.querySelector('#positionsTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!positions.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Немає посад</td></tr>';
+    return;
+  }
+  positions.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.id}</td>
+      <td style="font-weight:900;">${escapeHtml(p.name)}</td>
+      <td><span class="badge ${p.is_active ? 'auto' : 'warn'}">${p.is_active ? '✅ Активна' : '⛔ Деактивована'}</span></td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn secondary" style="padding:5px 10px;font-size:11px;" onclick="openPosEdit(${p.id},'${escapeHtml(p.name)}')">✏️ Редагувати</button>
+          <button class="btn secondary" style="padding:5px 10px;font-size:11px;background:rgba(255,77,77,0.12);border-color:rgba(255,77,77,0.30);color:#ff8b8b;" onclick="deletePosition(${p.id},'${escapeHtml(p.name)}')">🗑️ Видалити</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function populatePositionSelects() {
+  const active = _positionsCache.filter(p => p.is_active);
+  const selects = [
+    document.getElementById('position'),
+    document.getElementById('exportEmpSelect') // не посада, але заповнюємо окремо
+  ];
+  const posSelect = document.getElementById('position');
+  if (posSelect) {
+    const cur = posSelect.value;
+    posSelect.innerHTML = '<option value="">— оберіть посаду —</option>';
+    active.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      if (p.name === cur) opt.selected = true;
+      posSelect.appendChild(opt);
+    });
+  }
+}
+
+async function createPosition() {
+  const name = document.getElementById('newPositionName').value.trim();
+  const errEl = document.getElementById('posCreateError');
+  const infoEl = document.getElementById('posCreateInfo');
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Введіть назву посади'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await apiFetch('/positions/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    if (!res.ok) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    const data = await res.json();
+    document.getElementById('newPositionName').value = '';
+    infoEl.textContent = `✅ Посаду "${data.name}" створено`;
+    infoEl.style.display = 'block';
+    await loadPositions();
+  } catch(e) {
+    errEl.textContent = String(e.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+function openPosEdit(id, name) {
+  document.getElementById('posEditId').value = id;
+  document.getElementById('posEditName').value = name;
+  document.getElementById('posEditError').style.display = 'none';
+  document.getElementById('posEditInfo').style.display = 'none';
+  document.getElementById('posEditBox').style.display = 'block';
+  document.getElementById('posEditBox').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelPosEdit() {
+  document.getElementById('posEditBox').style.display = 'none';
+}
+
+async function savePosEdit() {
+  const id = document.getElementById('posEditId').value;
+  const name = document.getElementById('posEditName').value.trim();
+  const errEl = document.getElementById('posEditError');
+  const infoEl = document.getElementById('posEditInfo');
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Введіть назву'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await apiFetch(`/positions/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    if (!res.ok) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    infoEl.textContent = '✅ Збережено';
+    infoEl.style.display = 'block';
+    await loadPositions();
+    setTimeout(() => cancelPosEdit(), 1500);
+  } catch(e) {
+    errEl.textContent = String(e.message || e);
+    errEl.style.display = 'block';
+  }
+}
+
+async function deletePosition(id, name) {
+  if (!confirm(`Видалити посаду "${name}"?\nЯкщо вона використовується — буде деактивована (не видалена).`)) return;
+  try {
+    const res = await apiFetch(`/positions/${id}`, {method:'DELETE'});
+    if (!res.ok && res.status !== 204) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    await loadPositions();
+  } catch(e) {
+    alert('Помилка: ' + String(e.message || e));
+  }
+}
+
+// ======================= EXPORT =======================
+
+async function exportReport(format) {
+  const dateFrom = document.getElementById('exportDateFrom').value;
+  const dateTo   = document.getElementById('exportDateTo').value;
+  const empId    = document.getElementById('exportEmpSelect').value;
+  const errEl    = document.getElementById('exportError');
+  const infoEl   = document.getElementById('exportInfo');
+  errEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  if (!dateFrom || !dateTo) {
+    errEl.textContent = 'Вкажіть дату від і дату до';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (dateFrom > dateTo) {
+    errEl.textContent = '"Дата від" не може бути пізніше "Дата до"';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  let url = `/api/export/worktime.${format}?date_from=${dateFrom}&date_to=${dateTo}`;
+  if (empId) url += `&employee_id=${empId}`;
+
+  infoEl.textContent = '⏳ Формується звіт, зачекайте…';
+  infoEl.style.display = 'block';
+
+  try {
+    const token = getToken();
+    const res = await fetch(url, {
+      headers: token ? {'Authorization': `Bearer ${token}`} : {}
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${fmtJsonError(txt)}`);
+    }
+
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const cd = res.headers.get('content-disposition') || '';
+    const match = cd.match(/filename="?([^"]+)"?/);
+    a.download = match ? match[1] : `worktime.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+
+    infoEl.textContent = `✅ Файл "${a.download}" завантажується`;
+  } catch(e) {
+    errEl.textContent = String(e.message || e);
+    errEl.style.display = 'block';
+    infoEl.style.display = 'none';
+  }
+}
+
+// ======================= STATS LIVE-SEARCH =======================
+
+let _statsSearchDebounce = null;
+
+function statsApplyEmpFilter() {
+  clearTimeout(_statsSearchDebounce);
+  _statsSearchDebounce = setTimeout(() => {
+    const q = (document.getElementById('statsEmpSearch')?.value || '').trim().toLowerCase();
+    const sel = document.getElementById('empSelect');
+    if (!sel) return;
+    const opts = sel.options;
+    for (let i = 0; i < opts.length; i++) {
+      const txt = opts[i].textContent.toLowerCase();
+      opts[i].style.display = (!q || txt.includes(q)) ? '' : 'none';
+    }
+    // Автоматично вибираємо перший видимий варіант
+    for (let i = 0; i < opts.length; i++) {
+      if (opts[i].style.display !== 'none' && opts[i].value) {
+        sel.value = opts[i].value;
+        break;
+      }
+    }
+  }, 350);
+}
+
 
 async function createTerminal() {
   const nameInput = document.getElementById('newTerminalName');

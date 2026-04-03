@@ -1,8 +1,9 @@
 # Git
 .git
 .gitignore
+.github
 
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *.pyo
@@ -11,23 +12,30 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Virtual environments
 .venv/
 venv/
 env/
 
-# Среда и секреты
-# .env
-# *.env.local
-
-# Docker
-# docker-compose*.yml
-# Dockerfile*
+# Secrets — NEVER in image
+.env
+.env.*
+!.env.example
+!.env.production.example
 
 # IDE
 .vscode/
 .idea/
 *.swp
 
-# Логи и данные
+# Logs & local data
 *.log
-mysql_data/
+logs/
+backups/
+tmp/
+_trash/
+
+# Docs (not needed in image)
+docs/
+*.md

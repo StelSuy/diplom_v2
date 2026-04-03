@@ -15,14 +15,12 @@ from app.api.routes.auth import init_admin_hash
 from app.ws.routes import router as ws_router
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.core.seed import seed_demo_data
+from app.core.seed import seed_admin, seed_demo_data
 from app.db.session import SessionLocal
 
-# Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
@@ -31,7 +29,6 @@ app = FastAPI(
     redoc_url="/redoc" if settings.is_development else None,
 )
 
-# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -43,30 +40,31 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    """Initialize application on startup."""
     logger.info(f"Starting {settings.app_name} in {settings.env} mode")
-    logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"CORS origins: {settings.cors_origins}")
 
-    # БАГ №3 ВИПРАВЛЕНО: хешуємо пароль адміна один раз при старті
-    # (безпечно працює з будь-якою кількістю gunicorn воркерів)
+    # Хешуємо пароль адміна один раз (безпечно для будь-якої кількості воркерів)
     init_admin_hash()
 
-    # Seed demo data
+    db = SessionLocal()
     try:
-        db = SessionLocal()
+        # 1. Адмін у таблиці users (ім'я + пароль з .env)
         try:
-            created = seed_demo_data(db)
-            if created:
-                logger.info("Demo data seeded successfully")
-        finally:
-            db.close()
-    except (OperationalError, ProgrammingError) as e:
-        logger.warning(f"Database not ready for seeding: {e}")
-    except Exception as e:
-        logger.exception(f"Failed to seed data: {e}")
-    
-    # Debug: Log registered routes
+            seed_admin(db)
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"Could not seed admin user (DB not ready?): {e}")
+        except Exception as e:
+            logger.exception(f"Failed to seed admin user: {e}")
+
+        # 2. Демо-дані (термінал + тестовий співробітник)
+        try:
+            seed_demo_data(db)
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"Could not seed demo data (DB not ready?): {e}")
+        except Exception as e:
+            logger.exception(f"Failed to seed demo data: {e}")
+    finally:
+        db.close()
+
     if settings.debug:
         logger.info("=== Registered Routes ===")
         for route in app.routes:
@@ -77,21 +75,14 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    """Cleanup on application shutdown."""
     logger.info("Shutting down application")
 
 
-# Exception Handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Global exception handler for unhandled errors.
-    Logs the error and returns a generic error response.
-    """
     logger.exception(
         f"Unhandled exception on {request.method} {request.url.path}: {exc}"
     )
-    
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -102,37 +93,25 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Request Logging Middleware (Development only)
 if settings.is_development:
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
-        """Log all HTTP requests in development mode."""
         logger.debug(f">>> {request.method} {request.url.path}")
         response = await call_next(request)
         logger.debug(f"<<< {response.status_code}")
         return response
 
 
-# Favicon Endpoint
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Serve favicon.ico if it exists."""
     favicon_path = Path(__file__).parent.parent / "favicon.ico"
     if favicon_path.exists():
         return FileResponse(favicon_path)
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={"detail": "Favicon not found"}
-    )
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "Not found"})
 
 
-# Health Check Endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
-    """
-    Health check endpoint for monitoring.
-    Returns application status and version.
-    """
     return {
         "status": "ok",
         "app": settings.app_name,
@@ -141,40 +120,26 @@ async def health_check():
     }
 
 
-# Root Endpoint
 @app.get("/", tags=["System"])
 async def root():
-    """
-    Root endpoint with API information.
-    """
     response = {
         "message": settings.app_name,
         "version": "1.0.0",
         "status": "running",
         "environment": settings.env,
     }
-    
     if settings.is_development:
-        response.update({
-            "docs": "/docs",
-            "redoc": "/redoc",
-            "admin": "/admin",
-        })
-    
+        response.update({"docs": "/docs", "redoc": "/redoc", "admin": "/admin"})
     return response
 
 
-# Include API Router
 app.include_router(api_router, prefix="/api")
-
-# WebSocket Router
 app.include_router(ws_router)
 
-# Mount Admin Static Files
 try:
     static_path = Path(__file__).parent / "static"
     if static_path.exists():
         app.mount("/admin", StaticFiles(directory=str(static_path), html=True), name="admin")
-        logger.info(f"Admin panel mounted at /admin")
+        logger.info("Admin panel mounted at /admin")
 except Exception as e:
     logger.warning(f"Failed to mount admin static files: {e}")

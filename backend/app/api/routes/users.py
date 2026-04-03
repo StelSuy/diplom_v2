@@ -83,7 +83,7 @@ def create_user(
     db.commit()
     db.refresh(user)
     
-    audit_log("user_create", current_user["username"], {
+    audit_log("user_create", current_user["username"], details={
         "user_id": user.id,
         "username": user.username,
         "role": user.role
@@ -128,7 +128,7 @@ def update_user(
     db.commit()
     db.refresh(user)
     
-    audit_log("user_update", current_user["username"], {
+    audit_log("user_update", current_user["username"], details={
         "user_id": user.id,
         "username": user.username,
         "changes": changes
@@ -164,7 +164,7 @@ def delete_user(
     db.delete(user)
     db.commit()
     
-    audit_log("user_delete", current_user["username"], {
+    audit_log("user_delete", current_user["username"], details={
         "user_id": user_id,
         "username": username
     })

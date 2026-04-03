@@ -1,38 +1,28 @@
 """
-Audit logger for admin actions.
-
-Writes structured audit entries to:
-  - stdout (via logging)
-  - in-memory ring buffer (MAX_ENTRIES) — доступний через get_audit_log()
+Audit logger — writes to DB (audit_logs table).
+Falls back to stderr if DB is unavailable.
 """
-import logging
 import json
-from collections import deque
+import logging
 from datetime import datetime, timezone
-from threading import Lock
 
-_audit_logger = logging.getLogger("audit")
+from sqlalchemy.orm import Session
 
-if not _audit_logger.handlers:
-    _handler = logging.StreamHandler()
-    _handler.setFormatter(
-        logging.Formatter("[AUDIT] %(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-    )
-    _audit_logger.addHandler(_handler)
-    _audit_logger.setLevel(logging.INFO)
-    _audit_logger.propagate = False
+from app.db.session import SessionLocal
 
-# In-memory ring buffer — останні 500 записів
-MAX_ENTRIES = 500
-_log_buffer: deque[dict] = deque(maxlen=MAX_ENTRIES)
-_buffer_lock = Lock()
+_logger = logging.getLogger("audit")
 
-# Людські назви дій
 _ACTION_LABELS: dict[str, str] = {
     "admin_login":          "Вхід в систему",
     "employee_create":      "Створення співробітника",
     "employee_update":      "Редагування співробітника",
     "employee_delete":      "Видалення співробітника",
+    "user_create":          "Створення користувача",
+    "user_update":          "Редагування користувача",
+    "user_delete":          "Видалення користувача",
+    "position_create":      "Створення посади",
+    "position_update":      "Редагування посади",
+    "position_delete":      "Видалення посади",
     "manual_event_create":  "Ручне додавання події",
     "manual_event_delete":  "Видалення ручної події",
     "clear_day_events":     "Очищення подій за день",
@@ -46,52 +36,45 @@ def audit_log(
     admin_username: str,
     *,
     details: dict | None = None,
-):
+    admin_id: int | None = None,
+    entity_type: str | None = None,
+    entity_id: int | None = None,
+    db: Session | None = None,
+) -> None:
     """
-    Log an auditable admin action.
-
-    Args:
-        action: e.g. "manual_event_create", "employee_delete", "terminal_rotate_key"
-        admin_username: who performed the action
-        details: extra data (employee_id, event_id, etc.)
+    Записує аудит-подію в таблицю audit_logs.
+    Якщо db не передано — відкриває власну сесію.
     """
-    entry = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "action": action,
-        "action_label": _ACTION_LABELS.get(action, action),
-        "admin": admin_username,
-        "details": details or {},
-    }
+    from app.models.audit_log import AuditLog
 
-    _audit_logger.info(json.dumps(entry, ensure_ascii=False))
+    details_json = json.dumps(details, ensure_ascii=False) if details else None
 
-    with _buffer_lock:
-        _log_buffer.appendleft(entry)  # найновіші — спереду
+    entry = AuditLog(
+        admin_id=admin_id,
+        admin_username=admin_username,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        details=details_json,
+        created_at=datetime.now(timezone.utc),
+    )
 
+    _logger.info(
+        f"[AUDIT] {admin_username} | {action} | {entity_type}:{entity_id} | {details_json}"
+    )
 
-def get_audit_log(
-    limit: int = 100,
-    action_filter: str | None = None,
-) -> list[dict]:
-    """
-    Повертає останні записи аудиту з in-memory буфера.
-
-    Args:
-        limit: максимальна кількість записів (1..500)
-        action_filter: якщо задано — тільки записи з цим action
-    """
-    with _buffer_lock:
-        entries = list(_log_buffer)
-
-    if action_filter:
-        entries = [e for e in entries if e.get("action") == action_filter]
-
-    return entries[:limit]
+    own_session = db is None
+    session: Session = db or SessionLocal()
+    try:
+        session.add(entry)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        _logger.error(f"[AUDIT] Failed to write audit log to DB: {exc}")
+    finally:
+        if own_session:
+            session.close()
 
 
 def get_action_types() -> list[dict]:
-    """Повертає список відомих типів дій для фільтру."""
-    return [
-        {"action": k, "label": v}
-        for k, v in _ACTION_LABELS.items()
-    ]
+    return [{"action": k, "label": v} for k, v in _ACTION_LABELS.items()]

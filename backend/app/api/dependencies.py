@@ -23,8 +23,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         token = credentials.credentials
         payload = jwt.decode(
             token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
+            settings.jwt_secret,
+            algorithms=[settings.jwt_alg]
         )
         
         username = payload.get("sub")

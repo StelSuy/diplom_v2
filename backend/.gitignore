@@ -20,15 +20,16 @@ env/
 ENV/
 
 # ===========================================
-# Environment & Secrets
+# Environment & Secrets  ← НЕ КОМІТЬ .env!
 # ===========================================
-# .env
+.env
 .env.local
 .env.production
 .env.*.local
 *.pem
 *.key
 *.crt
+ssl/
 
 # Keep examples
 !.env.example
@@ -65,6 +66,7 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+backups/
 
 # ===========================================
 # Testing
@@ -79,15 +81,13 @@ coverage.xml
 *.cover
 
 # ===========================================
-# Docker
+# Docker volumes
 # ===========================================
-ssl/
-backups/*.sql
+mysql_data/
 
 # ===========================================
 # Project Specific
 # ===========================================
-*.pdf
 uploads/
 static/uploads/
 *.bak
@@ -95,20 +95,3 @@ static/uploads/
 tmp/
 temp/
 _trash/
-
-# ===========================================
-# Alembic
-# ===========================================
-alembic.ini.bak
-
-# ===========================================
-# mypy
-# ===========================================
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# ===========================================
-# Keep Important Files
-# ===========================================
-!README.md
