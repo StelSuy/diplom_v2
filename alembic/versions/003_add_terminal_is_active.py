@@ -1,14 +1,14 @@
 """add is_active to terminals
 
 Revision ID: 003_add_terminal_is_active
-Revises: e511f0b8ab3c
+Revises: 002
 Create Date: 2026-04-04
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = '003_add_terminal_is_active'
-down_revision = 'e511f0b8ab3c'
+down_revision = '002'
 branch_labels = None
 depends_on = None
 
