@@ -1,0 +1,60 @@
+# =============================================================================
+#  TimeTracker — docker-compose.dev.yml  (DEVELOPMENT)
+#  Usage:  docker compose -f docker-compose.dev.yml up
+# =============================================================================
+
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: timetracker_db_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: devroot
+      MYSQL_DATABASE:      timetracker_db
+      MYSQL_USER:          timetracker_user
+      MYSQL_PASSWORD:      devpassword
+    ports:
+      - "3306:3306"         # expose для локального GUI-клиента
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - dev_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdevroot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: timetracker_api_dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql+pymysql://timetracker_user:devpassword@db:3306/timetracker_db?charset=utf8mb4
+      APP_ENV: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app                   # hot-reload: изменения в коде сразу видны
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dev_net
+
+volumes:
+  mysql_dev_data:
+
+networks:
+  dev_net:
+    driver: bridge
