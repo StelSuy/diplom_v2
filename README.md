@@ -1,148 +1,18 @@
 # TimeTracker
 
-**Система обліку робочого часу через NFC-термінали.**
-
-FastAPI backend + вбудована SPA-адмінка, WebSocket live-оновлення, MySQL/SQLite, Docker.
+Система обліку робочого часу через NFC-термінали.  
+FastAPI + MySQL + WebSocket + вбудована адмінка (SPA) + Docker.
 
 ---
 
 ## Можливості
 
-- NFC-термінали — захищений протокол challenge-response
-- Live-дашборд — WebSocket оновлення сканувань у реальному часі
-- Аналітика — денні/тижневі/місячні звіти, PDF та Excel-експорт
-- Графік змін — планування + PDF-експорт з красивим оформленням
+- NFC-термінали — challenge-response автентифікація
+- Live-дашборд — WebSocket оновлення в реальному часі
+- Аналітика — звіти по часу, експорт PDF / XLSX
+- Графік змін — планування + PDF-експорт
 - Журнал аудиту — кожна дія адміна фіксується
 - Ролі — Admin, Manager, HR, Employee
-
----
-
-## Швидкий старт
-
-### Варіант 1 — Docker (рекомендовано)
-
-```bash
-git clone https://github.com/StelSuy/diplom_v2.git timetracker
-cd timetracker
-
-# Налаштувати змінні оточення
-cp .env.example .env
-nano .env   # змінити DB_ROOT_PASSWORD, DB_PASSWORD, JWT_SECRET, ADMIN_PASSWORD
-
-# Запустити
-chmod +x deploy.sh
-./deploy.sh
-```
-
-Адмінка: `http://localhost/admin/`
-API docs: `http://localhost/docs`
-
----
-
-### Варіант 2 — Docker (без Nginx, прямий порт 8000)
-
-Підходить для локальної ВМ / тестування:
-
-```bash
-cp .env.example .env
-nano .env
-
-docker compose -f docker-compose.dev.yml up -d
-```
-
-Адмінка: `http://IP_вашої_машини:8000/admin/`
-
----
-
-### Варіант 3 — Без Docker (SQLite, найпростіше)
-
-```bash
-git clone https://github.com/StelSuy/diplom_v2.git timetracker
-cd timetracker
-
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env
-nano .env
-```
-
-У `.env` встановити:
-```env
-DATABASE_URL=sqlite:///./timetracker.db
-JWT_SECRET=ваш_секретний_рядок_мінімум_32_символи
-ADMIN_PASSWORD=ваш_пароль
-APP_ENV=development
-ALLOWED_ORIGINS=*
-```
-
-```bash
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Адмінка: `http://localhost:8000/admin/`
-
----
-
-## Налаштування .env
-
-| Змінна | Опис | Приклад |
-|--------|------|---------|
-| `DB_ROOT_PASSWORD` | Пароль root MySQL | `openssl rand -hex 16` |
-| `DB_PASSWORD` | Пароль користувача БД | `openssl rand -hex 16` |
-| `JWT_SECRET` | Секрет для JWT (**мін. 32 символи**) | `openssl rand -hex 64` |
-| `ADMIN_PASSWORD` | Пароль адміна | мін. 8 символів |
-| `ALLOWED_ORIGINS` | CORS-джерела | `*` або `https://domain.com` |
-| `APP_ENV` | Середовище | `production` / `development` |
-| `GUNICORN_WORKERS` | Кількість воркерів | `4` (2×CPU+1) |
-
----
-
-## Розгортання на локальній ВМ
-
-### 1. Дізнатись IP ВМ
-```bash
-ip addr show | grep "inet " | grep -v 127
-# наприклад: 192.168.1.105
-```
-
-### 2. Налаштувати мережу ВМ
-У VirtualBox: **Налаштування → Мережа → Тип підключення: Мережевий міст (Bridged)**
-
-### 3. Відкрити порти в firewall (Ubuntu)
-```bash
-sudo ufw allow 8000
-sudo ufw allow 80
-```
-
-### 4. Автостарт при завантаженні системи
-
-```bash
-sudo nano /etc/systemd/system/timetracker.service
-```
-
-```ini
-[Unit]
-Description=TimeTracker
-After=network.target
-
-[Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/timetracker
-ExecStart=docker compose up
-ExecStop=docker compose down
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl enable timetracker
-sudo systemctl start timetracker
-```
 
 ---
 
@@ -152,25 +22,147 @@ sudo systemctl start timetracker
 timetracker/
 ├── app/
 │   ├── api/          # FastAPI routers
-│   ├── core/         # config, security
-│   ├── crud/         # DB operations
-│   ├── models/       # SQLAlchemy models
-│   ├── schemas/      # Pydantic schemas
-│   ├── services/     # business logic
-│   ├── static/       # SPA admin panel (index.html)
-│   └── ws/           # WebSocket
-├── alembic/          # DB migrations
+│   ├── core/         # config, logging, seed
+│   ├── crud/         # операції з БД
+│   ├── models/       # SQLAlchemy моделі
+│   ├── schemas/      # Pydantic схеми
+│   ├── services/     # бізнес-логіка
+│   ├── static/       # SPA адмінка (index.html + JS)
+│   ├── ws/           # WebSocket
+│   └── main.py
+├── alembic/          # міграції БД
 ├── docker/
-│   ├── mysql/        # MySQL init script
-│   └── nginx/        # Nginx config + SSL placeholder
-├── .env.example      # ← копіювати в .env
-├── docker-compose.yml         # production (з Nginx)
-├── docker-compose.dev.yml     # development (без Nginx)
+│   ├── mysql/        # init.sql
+│   └── nginx/        # nginx.conf + SSL
+├── .env              # змінні оточення (є в репо)
+├── .env.example      # шаблон з описом усіх змінних
+├── docker-compose.yml         # production (з Nginx, порти 80/443)
+├── docker-compose.dev.yml     # dev / VM (без Nginx, порт 8000)
 ├── Dockerfile
 ├── requirements.txt
 ├── deploy.sh         # перший запуск
 ├── update.sh         # оновлення без downtime
-└── backup.sh         # бекап БД (для cron)
+└── backup.sh         # бекап БД
+```
+
+---
+
+## Запуск на локальній ВМ (Ubuntu + Docker)
+
+### 1. Встановити Docker
+
+```bash
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin git
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### 2. Клонувати проект
+
+```bash
+git clone https://github.com/ВАШ_АКАУНТ/timetracker.git
+cd timetracker
+```
+
+### 3. Налаштувати .env
+
+Файл `.env` вже є в репозиторії з базовими налаштуваннями.  
+Перед запуском на продакшн-ВМ **обов'язково змініть паролі**:
+
+```bash
+nano .env
+```
+
+| Змінна | Опис |
+|---|---|
+| `DB_ROOT_PASSWORD` | пароль root MySQL |
+| `DB_PASSWORD` | пароль користувача БД |
+| `JWT_SECRET` | мін. 32 символи → `openssl rand -hex 64` |
+| `ADMIN_PASSWORD` | пароль адміна |
+| `APP_ENV` | `development` або `production` |
+| `ALLOWED_ORIGINS` | `*` або `https://domain.com` |
+
+### 4a. Запуск без Nginx (порт 8000) — найпростіше для ВМ
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+- Адмінка: `http://IP_ВАШОЇ_ВМ:8000/admin/`
+- Swagger:  `http://IP_ВАШОЇ_ВМ:8000/docs` (тільки `APP_ENV=development`)
+
+### 4b. Запуск з Nginx (порти 80/443) — production
+
+> Потребує SSL-сертифікатів. Якщо їх немає — використовуйте варіант 4a.
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+- Адмінка: `http://IP_ВАШОЇ_ВМ/admin/`
+
+---
+
+## SSL (необов'язково, тільки для варіанту 4b)
+
+```bash
+# Встановити certbot
+sudo apt install -y certbot
+
+# Зупинити Docker, отримати сертифікат
+docker compose down
+sudo certbot certonly --standalone -d yourdomain.com
+
+# Скопіювати сертифікати
+mkdir -p docker/nginx/ssl
+sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem docker/nginx/ssl/
+sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem   docker/nginx/ssl/
+
+# Запустити знову
+./deploy.sh
+```
+
+Якщо SSL немає — у `docker/nginx/conf.d/timetracker.conf` приберіть блок `server { listen 443 ... }` і redirect, замінивши на прямий `proxy_pass` на порту 80.
+
+---
+
+## Мережа VirtualBox
+
+Щоб ВМ була доступна з телефону/ПК у тій самій Wi-Fi мережі:
+
+> **Налаштування → Мережа → Тип: Мережевий міст (Bridged Adapter)**
+
+```bash
+# Дізнатись IP ВМ
+ip addr show | grep "inet " | grep -v 127
+
+# Відкрити порти у firewall
+sudo ufw allow 8000
+sudo ufw allow 80
+```
+
+З телефону відкривати: `http://192.168.X.X:8000/admin/`
+
+---
+
+## Корисні команди
+
+```bash
+# Статус сервісів
+docker compose ps
+
+# Живі логи API
+docker compose logs -f api
+
+# Оновлення коду (git pull + rebuild)
+./update.sh
+
+# Бекап БД
+./backup.sh
+
+# Зупинити всі контейнери
+docker compose down
 ```
 
 ---
@@ -178,28 +170,14 @@ timetracker/
 ## API
 
 | Метод | Шлях | Опис |
-|-------|------|------|
+|---|---|---|
 | `GET` | `/health` | Стан сервісу |
 | `GET` | `/admin/` | Адмін-панель |
-| `GET` | `/docs` | Swagger UI (тільки dev) |
+| `GET` | `/docs` | Swagger UI (тільки `APP_ENV=development`) |
 | `POST` | `/api/login` | Авторизація |
+| `GET` | `/api/employees` | Список співробітників |
+| `GET` | `/api/terminals` | Список терміналів |
 | `GET` | `/api/stats/recent-scans` | Останні сканування |
-| `GET` | `/api/schedule/pdf` | Експорт графіку в PDF |
 | `GET` | `/api/export/worktime.xlsx` | Звіт по робочому часу |
-| `WS` | `/ws/scans` | Live WebSocket |
-
----
-
-## Оновлення
-
-```bash
-./update.sh
-```
-
-## Бекап БД
-
-```bash
-./backup.sh
-# або автоматично через cron:
-# 0 2 * * * /home/ubuntu/timetracker/backup.sh
-```
+| `GET` | `/api/schedule/pdf` | Експорт графіку PDF |
+| `WS`  | `/ws/scans` | Live WebSocket |

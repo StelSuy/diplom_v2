@@ -2,8 +2,8 @@
 #  TimeTracker — .gitignore
 # =============================================================================
 
-# ── Secrets (NEVER commit) ────────────────────────────────────────────────────
-.env
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# .env is committed intentionally (contains no real secrets for local dev)
 .env.local
 .env.production
 .env.staging
@@ -68,6 +68,8 @@ docker/nginx/ssl/          # SSL certificates — store separately
 # docker volumes are not files, but named mounts appear here on some systems
 
 # ── Temporary files ───────────────────────────────────────────────────────────
+fake_dump.sql
+_trash_*
 tmp/
 temp/
 _trash/
