@@ -7,6 +7,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.event import Event
+    from app.models.audit_log import AuditLog
 
 
 class UserRole(str, enum.Enum):
@@ -29,5 +30,6 @@ class User(Base):
         nullable=False
     )
 
-    # ВИПРАВЛЕНО: lazy="dynamic" застарілий в SQLAlchemy 2.0 для Mapped[] — замінено на lazy="select"
     created_events: Mapped[List["Event"]] = relationship("Event", back_populates="created_by", lazy="select")
+    audit_logs: Mapped[List["AuditLog"]] = relationship("AuditLog", back_populates="admin", lazy="select")
+

@@ -10,9 +10,13 @@ from app.api.deps import require_admin
 from app.db.session import get_db
 from app.models.audit_log import AuditLog
 from app.models.user import User
-from app.security.audit import get_action_types
+from app.security.audit import get_action_types, _ACTION_LABELS
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+def _get_action_label(action: str) -> str:
+    return _ACTION_LABELS.get(action, action)
 
 
 @router.get("/log")
@@ -52,15 +56,19 @@ def read_audit_log(
                 details = json.loads(r.details)
             except Exception:
                 details = r.details
+        ts_str = r.created_at.isoformat() if r.created_at else None
         entries.append({
             "id": r.id,
+            "ts": ts_str,            # frontend uses e.ts
+            "admin": r.admin_username,  # frontend uses e.admin
             "admin_username": r.admin_username,
             "admin_id": r.admin_id,
             "action": r.action,
+            "action_label": _get_action_label(r.action),
             "entity_type": r.entity_type,
             "entity_id": r.entity_id,
             "details": details,
-            "created_at": r.created_at.isoformat(),
+            "created_at": ts_str,
         })
 
     return {"entries": entries, "total": total, "limit": limit, "offset": offset}

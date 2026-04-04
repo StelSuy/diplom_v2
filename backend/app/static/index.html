@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Адмін-панель — Тайм-трекер</title>
+  <title>TimeTracker Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
  /* Темна тема (за замовчуванням) */
@@ -28,6 +31,8 @@
   --radius-sm: 12px;
   --radius-xs: 10px;
   --focus: 0 0 0 3px rgba(74,144,226,0.35);
+  --sidebar-w: 220px;
+  --topbar-h: 60px;
 }
 /* Світла тема */
 [data-theme="light"] {
@@ -52,15 +57,18 @@
 }
 
     *{ box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; margin: 0; }
 
 body{
   margin:0;
-  padding: 20px;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  padding: 0;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
   transition: background 0.3s ease, color 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 /* Градієнти для темної теми */
@@ -81,27 +89,247 @@ body[data-theme="light"] {
     radial-gradient(1000px 650px at 60% 120%, rgba(18,159,70,0.03), transparent 60%),
     linear-gradient(180deg, #f0f2f5 0%, #eaeef2 55%, #d9dee3 100%);
 }
+    /* ===== LAYOUT: Sidebar + Main ===== */
+    #app-layout {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
     .topbar{
+      position: sticky;
+      top: 0;
+      z-index: 100;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 14px;
-      flex-wrap:wrap;
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 14px;
-      backdrop-filter: blur(10px);
+      flex-wrap: nowrap;
+      padding: 0 20px;
+      height: var(--topbar-h);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(14,22,40,0.97), rgba(11,18,32,0.97));
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      backdrop-filter: blur(16px);
+    }
+    [data-theme="light"] .topbar {
+      background: rgba(250,251,255,0.97);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    #inner-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.03);
+      border-right: 1px solid var(--border);
+      padding: 12px 8px;
+      overflow-y: auto;
+      position: sticky;
+      top: var(--topbar-h);
+      height: calc(100vh - var(--topbar-h));
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: width 0.2s ease;
+    }
+    [data-theme="light"] .sidebar {
+      background: rgba(255,255,255,0.7);
+    }
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted-2);
+      padding: 8px 10px 4px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .sidebar-item:hover {
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+    }
+    .sidebar-item.active {
+      background: linear-gradient(135deg, rgba(74,144,226,0.18), rgba(74,144,226,0.08));
+      border-color: rgba(74,144,226,0.30);
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+    [data-theme="light"] .sidebar-item.active {
+      background: rgba(59,130,246,0.10);
+      border-color: rgba(59,130,246,0.25);
+      color: #2563eb;
+    }
+    .sidebar-icon {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 8px;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    #main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    /* ===== MOBILE SIDEBAR ===== */
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 22px;
+      padding: 4px 8px;
+    }
+    @media (max-width: 720px) {
+      .sidebar {
+        position: fixed;
+        top: var(--topbar-h);
+        left: 0;
+        z-index: 200;
+        height: calc(100vh - var(--topbar-h));
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.35);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-toggle {
+        display: block;
+      }
+      #inner-layout {
+        flex-direction: column;
+      }
+      #main-content {
+        padding: 14px;
+      }
     }
 
     h1{
       margin:0;
       font-weight: 800;
-      letter-spacing: 0.2px;
-      font-size: 18px;
+      letter-spacing: -0.3px;
+      font-size: 16px;
       line-height: 1.2;
+    }
+
+    /* ===== TOAST NOTIFICATIONS ===== */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(20,28,48,0.96);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      backdrop-filter: blur(12px);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      min-width: 220px;
+      max-width: 380px;
+      pointer-events: all;
+      animation: toastIn 0.25s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    [data-theme="light"] .toast {
+      background: rgba(255,255,255,0.98);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    }
+    .toast.toast-hide {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    .toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-weight: 700; margin-bottom: 2px; }
+    .toast-msg { color: var(--muted); font-weight: 500; font-size: 12px; }
+    .toast.t-success { border-color: rgba(45,204,112,0.30); }
+    .toast.t-error   { border-color: rgba(255,77,77,0.30); }
+    .toast.t-warn    { border-color: rgba(255,209,102,0.30); }
+    .toast.t-info    { border-color: rgba(74,144,226,0.30); }
+    @keyframes toastIn {
+      from { opacity:0; transform: translateX(24px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+
+    /* ===== SPINNER / LOADING ===== */
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    .spinner-sm { width: 14px; height: 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Table loading overlay */
+    .table-loading {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+    }
+    .table-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted-2);
+    }
+    .table-empty-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+    .table-empty-text {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .table-empty-sub {
+      font-size: 12px;
+      margin-top: 4px;
     }
 
     .muted{ color: var(--muted); font-size: 12px; }
@@ -133,13 +361,16 @@ body[data-theme="light"] {
       border: 1px solid transparent;
       background: linear-gradient(180deg, var(--accent-2), var(--accent));
       color: #fff;
-      padding: 10px 14px;
-      border-radius: 12px;
+      padding: 9px 14px;
+      border-radius: 10px;
       transition: transform .12s ease, filter .12s ease, box-shadow .12s ease, background .12s ease;
-      font-weight: 800;
+      font-weight: 700;
       font-size: 13px;
-      box-shadow: 0 10px 20px rgba(74,144,226,0.18);
+      box-shadow: 0 6px 16px rgba(74,144,226,0.20);
       user-select:none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
     .btn:active{ transform: translateY(0px) scale(0.99); }
@@ -212,19 +443,23 @@ body[data-theme="light"] {
     }
 
     th, td{
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 11px 14px;
       text-align: left;
       font-size: 13px;
       color: var(--text);
     }
     th{
-      background: rgba(255,255,255,0.08);
-      font-weight: 900;
-      color: rgba(255,255,255,0.88);
-      letter-spacing: .2px;
+      background: rgba(255,255,255,0.05);
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      padding: 9px 14px;
     }
-    tr:hover{ background: rgba(255,255,255,0.05); cursor:pointer; }
+    tr:hover td{ background: rgba(255,255,255,0.04); cursor:pointer; }
+    [data-theme="light"] th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.45); }
 
     label{
       display:block;
@@ -428,10 +663,54 @@ body[data-theme="light"] {
     }
 
     @media (max-width: 520px){
-      body{ padding: 14px; }
+      body{ padding: 0; }
       .grid2{ grid-template-columns: 1fr; }
-      .topbar{ padding: 12px; }
-      .btn{ width: 100%; }
+    }
+
+    /* ===== CONFIRM DIALOG ===== */
+    #confirm-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9998;
+      backdrop-filter: blur(6px);
+    }
+    #confirm-backdrop.show { display: flex; }
+    #confirm-box {
+      width: 100%;
+      max-width: 380px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+    }
+    [data-theme="light"] #confirm-box {
+      background: rgba(255,255,255,0.96);
+    }
+    #confirm-title {
+      font-weight: 800;
+      font-size: 15px;
+      padding: 16px 18px 8px;
+    }
+    #confirm-message {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 0 18px 16px;
+      line-height: 1.5;
+    }
+    #confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
     }
     
     /* Plan Builder matrix */
@@ -619,43 +898,131 @@ body[data-theme="light"] {
   background: rgba(59,130,246,0.20);
   border-color: rgba(59,130,246,0.40);
 }
-  
+[data-theme="light"] .sidebar-item:hover {
+  background: rgba(0,0,0,0.04);
+}
+[data-theme="light"] body {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(58,117,210,0.05), transparent 60%),
+    linear-gradient(180deg, #f0f2f5 0%, #eaeef2 100%);
+}
+/* Badge варіанти */
+.badge.good { color: var(--ok); border-color: rgba(45,204,112,.35); }
+.badge.bad  { color: #ff8b8b; border-color: rgba(255,139,139,.35); }
+
+/* Кнопка небезпечна */
+.btn.danger {
+  background: linear-gradient(180deg, rgba(255,100,100,0.9), rgba(220,50,50,0.85));
+  box-shadow: 0 6px 16px rgba(220,50,50,0.20);
+}
+.btn.danger:hover { filter: brightness(1.08); }
+
+/* Анімація появи рядків таблиці */
+@keyframes rowIn {
+  from { opacity:0; transform: translateY(4px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+tbody tr { animation: rowIn 0.18s ease; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+
   </style>
 </head>
 
 <body>
 
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm-backdrop">
+  <div id="confirm-box">
+    <div id="confirm-title">Підтвердження</div>
+    <div id="confirm-message"></div>
+    <div id="confirm-actions">
+      <button class="btn secondary" id="confirm-cancel-btn" onclick="confirmResolve(false)">Скасувати</button>
+      <button class="btn" id="confirm-ok-btn" onclick="confirmResolve(true)">Підтвердити</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-layout">
+
+<!-- ===== TOPBAR ===== -->
 <div class="topbar">
-  <div>
-    <h1>Адмін-панель</h1>
-    <div class="muted">Зберігання в UTC; відображення — локально (Europe/Warsaw).</div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Меню">☰</button>
+    <div>
+      <h1 style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:20px;">⏱</span> TimeTracker
+      </h1>
+    </div>
   </div>
   <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <button class="btn secondary" onclick="toggleTheme()" id="themeToggle" title="Перемикач теми">
-      <span id="themeIcon">🌙</span>
-    </button>
     <div class="status-pill" title="Стан авторизації та API">
       <span id="statusDot" class="dot"></span>
       <span id="statusText">Не авторизовано</span>
     </div>
-    <button class="btn secondary" onclick="openLogin()">Увійти</button>
-    <button class="btn" onclick="logout()">Вийти</button>
+    <button class="btn secondary" onclick="toggleTheme()" id="themeToggle" title="Перемикач теми" style="padding:8px 10px;">
+      <span id="themeIcon">☀️</span>
+    </button>
+    <div class="status-pill" id="wsIndicator" title="WebSocket live-оновлення"><span class="dot"></span> <span>Connecting…</span></div>
+    <button class="btn secondary" onclick="openLogin()" style="padding:8px 12px;">Увійти</button>
+    <button class="btn danger" onclick="logout()" style="padding:8px 12px;">Вийти</button>
   </div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn active" onclick="openTab('dashboard')">Головна</button>
-  <button class="tab-btn" onclick="openTab('employees')">Співробітники</button>
-  <button class="tab-btn" onclick="openTab('stats')">Статистика</button>
-  <button class="tab-btn" onclick="openTab('planBuilder')">Конструктор графіка</button>
-  <button class="tab-btn" onclick="openTab('scheduleTab')">Графік змін</button>
-  <button class="tab-btn" onclick="openTab('manualEntry')">Ручний ввід</button>
-  <button class="tab-btn" onclick="openTab('terminalsTab')">Термінали</button>
-  <button class="tab-btn" onclick="openTab('auditTab')">Журнал дій</button>
-  <button class="tab-btn" onclick="openTab('usersTab')">Адміністратори</button>
-  <button class="tab-btn" onclick="openTab('positionsTab')">Посади</button>
-  <button class="tab-btn" onclick="openTab('exportTab')">Експорт</button>
-</div>
+<div id="inner-layout">
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-label">Основне</div>
+  <div class="sidebar-item active" onclick="openTab('dashboard')" data-tab="dashboard">
+    <span class="sidebar-icon">📊</span><span>Головна</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('employees')" data-tab="employees">
+    <span class="sidebar-icon">👤</span><span>Співробітники</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('stats')" data-tab="stats">
+    <span class="sidebar-icon">📈</span><span>Статистика</span>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-label">Графіки</div>
+  <div class="sidebar-item" onclick="openTab('planBuilder')" data-tab="planBuilder">
+    <span class="sidebar-icon">🗓</span><span>Конструктор</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('scheduleTab')" data-tab="scheduleTab">
+    <span class="sidebar-icon">📅</span><span>Графік змін</span>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-label">Управління</div>
+  <div class="sidebar-item" onclick="openTab('manualEntry')" data-tab="manualEntry">
+    <span class="sidebar-icon">✏️</span><span>Ручний ввід</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('terminalsTab')" data-tab="terminalsTab">
+    <span class="sidebar-icon">🖥</span><span>Термінали</span>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-label">Адмін</div>
+  <div class="sidebar-item" onclick="openTab('auditTab')" data-tab="auditTab">
+    <span class="sidebar-icon">🔍</span><span>Журнал дій</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('usersTab')" data-tab="usersTab">
+    <span class="sidebar-icon">🔑</span><span>Адміністратори</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('positionsTab')" data-tab="positionsTab">
+    <span class="sidebar-icon">🏷</span><span>Посади</span>
+  </div>
+  <div class="sidebar-item" onclick="openTab('exportTab')" data-tab="exportTab">
+    <span class="sidebar-icon">📤</span><span>Експорт</span>
+  </div>
+</nav>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main id="main-content">
 
   <!-- ================= DASHBOARD ================= -->
   <div id="dashboard" class="tab-content active">
@@ -1567,13 +1934,90 @@ body[data-theme="light"] {
   </div>
 </div>
 
+</main><!-- end #main-content -->
+</div><!-- end #inner-layout -->
+</div><!-- end #app-layout -->
+
 
 
 <script>
   const API_ROOT = "/api";
   let chartInstance = null;
 
-  // ===== Система тем =====
+  // ===== TOAST NOTIFICATIONS =====
+  function toast(msg, type = 'info', title = '', duration = 4000) {
+    const icons = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
+    const icon = icons[type] || 'ℹ️';
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const el = document.createElement('div');
+    el.className = `toast t-${type}`;
+    el.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <div class="toast-body">
+        ${title ? `<div class="toast-title">${escapeHtml(title)}</div>` : ''}
+        <div class="toast-msg">${escapeHtml(msg)}</div>
+      </div>
+    `;
+    container.appendChild(el);
+
+    setTimeout(() => {
+      el.classList.add('toast-hide');
+      setTimeout(() => el.remove(), 280);
+    }, duration);
+  }
+
+  // ===== CONFIRM DIALOG (replaces window.confirm) =====
+  let _confirmResolve = null;
+
+  function showConfirm(message, title = 'Підтвердження', okLabel = 'Підтвердити', danger = false) {
+    return new Promise(resolve => {
+      _confirmResolve = resolve;
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      const okBtn = document.getElementById('confirm-ok-btn');
+      okBtn.textContent = okLabel;
+      okBtn.className = 'btn' + (danger ? ' danger' : '');
+      document.getElementById('confirm-backdrop').classList.add('show');
+    });
+  }
+
+  function confirmResolve(val) {
+    document.getElementById('confirm-backdrop').classList.remove('show');
+    if (_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+  }
+
+  // Keyboard: Escape closes modals
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      confirmResolve(false);
+      closeLogin();
+      closeManualConfirm();
+      closeClearDayConfirm();
+      closeQrModal();
+      closeRotateKeyConfirm();
+      closeSidebar();
+    }
+  });
+
+  // ===== SIDEBAR =====
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+  // Close sidebar on outside click (mobile)
+  document.addEventListener('click', e => {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+    if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && !toggle?.contains(e.target)) {
+      closeSidebar();
+    }
+  });
+
+  // ===== THEME =====
   function getTheme() {
     return localStorage.getItem('theme') || 'dark';
   }
@@ -1582,25 +2026,32 @@ body[data-theme="light"] {
     localStorage.setItem('theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeIcon(theme);
+    updateChartTheme(theme);
   }
 
   function updateThemeIcon(theme) {
     const icon = document.getElementById('themeIcon');
-    if (icon) {
-      icon.textContent = theme === 'light' ? '🌙' : '☀️';
-    }
+    if (icon) icon.textContent = theme === 'light' ? '🌙' : '☀️';
   }
 
   function toggleTheme() {
-    const currentTheme = getTheme();
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
+    setTheme(getTheme() === 'dark' ? 'light' : 'dark');
   }
 
-  // Ініціалізація теми при завантаженні
+  function updateChartTheme(theme) {
+    if (!chartInstance) return;
+    const textColor = theme === 'light' ? 'rgba(0,0,0,0.60)' : 'rgba(255,255,255,0.70)';
+    const gridColor = theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+    chartInstance.options.scales.x.ticks.color = textColor;
+    chartInstance.options.scales.y.ticks.color = textColor;
+    chartInstance.options.scales.x.grid.color = gridColor;
+    chartInstance.options.scales.y.grid.color = gridColor;
+    chartInstance.options.plugins.legend.labels.color = textColor;
+    chartInstance.update();
+  }
+
   (function initTheme() {
-    const savedTheme = getTheme();
-    setTheme(savedTheme);
+    setTheme(getTheme());
   })();
 
   // ===== positions list =====
@@ -1638,6 +2089,7 @@ body[data-theme="light"] {
   function logout() {
     clearToken();
     setStatus(false, "Не авторизовано");
+    toast('Ви вийшли з системи', 'info', 'Вихід');
     openLogin();
   }
 
@@ -1684,6 +2136,7 @@ body[data-theme="light"] {
       setToken(token);
       closeLogin();
       setStatus(true, "Авторизовано");
+      toast('Успішний вхід!', 'success', 'Авторизація');
       await loadEmployees();
     } catch (e) {
       errBox.textContent = String(e?.message || e);
@@ -1708,45 +2161,26 @@ body[data-theme="light"] {
 
     function openTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-    
-      document.querySelectorAll('.tab-btn').forEach(b => {
-        const onclick = b.getAttribute("onclick") || "";
-        if (onclick.includes(`'${tabId}'`)) b.classList.add("active");
+      document.querySelectorAll('.sidebar-item').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tabId);
       });
+      const el = document.getElementById(tabId);
+      if (el) el.classList.add('active');
+      closeSidebar();
     
-      if (tabId === 'dashboard') {
-        loadDashboard();
-      }
-      if (tabId === 'planBuilder') {
-        pbInit();
-      }
-      
-      if (tabId === 'scheduleTab') {
-        schedInitFilters();
-      }
-      if (tabId === 'manualEntry') {
-          manualInitFilters();
-      }
+      if (tabId === 'dashboard') loadDashboard();
+      if (tabId === 'planBuilder') pbInit();
+      if (tabId === 'scheduleTab') schedInitFilters();
+      if (tabId === 'manualEntry') manualInitFilters();
       if (tabId === 'terminalsTab') {
-          loadTerminals();
-          // Ініціалізуємо поле IP з збереженого значення
-          const ipInp = document.getElementById('serverIpInput');
-          if (ipInp && _serverIpOverride) ipInp.value = _serverIpOverride;
+        loadTerminals();
+        const ipInp = document.getElementById('serverIpInput');
+        if (ipInp && _serverIpOverride) ipInp.value = _serverIpOverride;
       }
-      if (tabId === 'auditTab') {
-        auditInitActionFilter();
-        loadAuditLog();
-      }
-      if (tabId === 'usersTab') {
-        loadUsers();
-      }
-      if (tabId === 'positionsTab') {
-        loadPositions();
-      }
+      if (tabId === 'auditTab') { auditInitActionFilter(); loadAuditLog(); }
+      if (tabId === 'usersTab') loadUsers();
+      if (tabId === 'positionsTab') loadPositions();
       if (tabId === 'exportTab') {
-        // Заповнити список співробітників для фільтру
         const sel = document.getElementById('exportEmpSelect');
         if (sel && _employeesCache.length) {
           sel.innerHTML = '<option value="">Всі співробітники</option>';
@@ -1935,12 +2369,23 @@ function fmtTime(ts) {
   function renderEmployeesTableAndSelects(list) {
     const tbody = document.querySelector("#empTable tbody");
     tbody.innerHTML = "";
-    list.forEach(emp => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${emp.id}</td><td>${emp.full_name}</td><td>${emp.nfc_uid}</td><td>${emp.is_active}</td>`;
-      tr.onclick = () => loadEmployee(emp.id);
-      tbody.appendChild(tr);
-    });
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="table-empty"><div class="table-empty-icon">👤</div><div class="table-empty-text">Співробітників не знайдено</div><div class="table-empty-sub">Спробуйте змінити пошуковий запит</div></div></td></tr>`;
+    } else {
+      list.forEach(emp => {
+        const tr = document.createElement("tr");
+        const activeBadge = emp.is_active
+          ? `<span class="badge good">✓ Активний</span>`
+          : `<span class="badge bad">⛔ Деакт.</span>`;
+        tr.innerHTML = `
+          <td style="font-weight:700; color:var(--muted);">#${emp.id}</td>
+          <td style="font-weight:600;">${escapeHtml(emp.full_name)}</td>
+          <td style="font-family:monospace; font-size:12px; color:var(--muted);">${escapeHtml(emp.nfc_uid || '—')}</td>
+          <td>${activeBadge}</td>`;
+        tr.onclick = () => loadEmployee(emp.id);
+        tbody.appendChild(tr);
+      });
+    }
 
     const sel = document.getElementById("empSelect");
     sel.innerHTML = "";
@@ -1967,7 +2412,8 @@ function fmtTime(ts) {
     const res = await apiFetch(`/employees/`);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      throw new Error(`employees HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      toast(fmtJsonError(txt), 'error', `employees HTTP ${res.status}`);
+      return;
     }
     const data = await res.json();
     _employeesCache = data;
@@ -2006,12 +2452,13 @@ function fmtTime(ts) {
     };
 
     if (!payload.full_name || !payload.nfc_uid) {
-      alert("ПІБ та NFC UID обов'язкові.");
+      toast("ПІБ та NFC UID обов'язкові", 'error', 'Помилка валідації');
       return;
     }
 
     if (!isEditModeOn()) {
-      if (!confirm(`Створити нового співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
+      const ok = await showConfirm(`Створити нового співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`, 'Новий співробітник', 'Створити');
+      if (!ok) return;
 
       const res = await apiFetch(`/employees/`, {
         method: "POST",
@@ -2021,16 +2468,19 @@ function fmtTime(ts) {
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`create employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+        toast(fmtJsonError(txt), 'error', `HTTP ${res.status}`);
+        return;
       }
 
       clearForm(true);
+      toast('Співробітника створено', 'success');
       await loadEmployees();
       return;
     }
 
     if (id) {
-      if (!confirm(`Точно оновити співробітника #${id}?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
+      const ok = await showConfirm(`Оновити співробітника #${id}?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}`, 'Редагування', 'Оновити');
+      if (!ok) return;
 
       const res = await apiFetch(`/employees/${id}`, {
         method: "PATCH",
@@ -2040,13 +2490,16 @@ function fmtTime(ts) {
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`update employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+        toast(fmtJsonError(txt), 'error', `HTTP ${res.status}`);
+        return;
       }
 
+      toast('Дані оновлено', 'success');
       await loadEmployees();
       return;
     } else {
-      if (!confirm(`Створити співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}\nПосада: ${payload.position || "-"}`)) return;
+      const ok = await showConfirm(`Створити співробітника?\n\nПІБ: ${payload.full_name}\nNFC: ${payload.nfc_uid}`, 'Новий співробітник', 'Створити');
+      if (!ok) return;
 
       const res = await apiFetch(`/employees/`, {
         method: "POST",
@@ -2056,10 +2509,12 @@ function fmtTime(ts) {
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(`create employee HTTP ${res.status}\n${fmtJsonError(txt)}`);
+        toast(fmtJsonError(txt), 'error', `HTTP ${res.status}`);
+        return;
       }
 
       clearForm(true);
+      toast('Співробітника створено', 'success');
       await loadEmployees();
     }
   }
@@ -2073,15 +2528,16 @@ function fmtTime(ts) {
       (empId.value || "").trim();
 
     if (!force && hasData) {
-      if (!confirm("Очистити форму? Незбережені зміни буде втрачено.")) return;
+      showConfirm("Очистити форму? Незбережені зміни буде втрачено.", 'Очистка форми', 'Очистити', true).then(ok => {
+        if (!ok) return;
+        empId.value = ""; fullName.value = ""; nfcUid.value = "";
+        position.value = ""; comment.value = ""; isActive.checked = true;
+      });
+      return;
     }
 
-    empId.value = "";
-    fullName.value = "";
-    nfcUid.value = "";
-    position.value = "";
-    comment.value = "";
-    isActive.checked = true;
+    empId.value = ""; fullName.value = ""; nfcUid.value = "";
+    position.value = ""; comment.value = ""; isActive.checked = true;
   }
 
   // ===== Schedule helpers =====
@@ -2748,20 +3204,11 @@ async function loadManualEvents() {
     const empIdVal = document.getElementById("empSelect").value;
     const monthVal = document.getElementById("monthPick").value;
 
-    if (!empIdVal) {
-      alert("Оберіть співробітника");
-      return;
-    }
-    if (!monthVal) {
-      alert("Оберіть місяць");
-      return;
-    }
+    if (!empIdVal) { toast('Оберіть співробітника', 'warn'); return; }
+    if (!monthVal) { toast('Оберіть місяць', 'warn'); return; }
 
     const range = monthToRange(monthVal);
-    if (!range) {
-      alert("Невірний місяць");
-      return;
-    }
+    if (!range) { toast('Невірний місяць', 'error'); return; }
 
     document.getElementById("rangePreview").value = `${range.from} → ${range.to}`;
     document.getElementById("statsInfo").textContent = "Завантаження…";
@@ -2853,74 +3300,90 @@ async function loadManualEvents() {
   function renderChart(dailyItems, scheduleMap) {
     const canvas = document.getElementById("chartCanvas");
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
 
-    if (chartInstance) {
-      chartInstance.destroy();
-      chartInstance = null;
-    }
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-    const labels = [];
-    const planData = [];
-    const factData = [];
+    const theme = getTheme();
+    const textColor = theme === 'light' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.65)';
+    const gridColor = theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
+
+    const labels = [], planData = [], factData = [];
 
     (dailyItems || []).forEach(r => {
       const day = r.date_local || "";
       const sch = (scheduleMap && scheduleMap.get) ? (scheduleMap.get(day) || null) : null;
-
-      labels.push(day);
+      // Shorter label (only day number)
+      const d = new Date(day);
+      labels.push(Number.isNaN(d.getTime()) ? day : d.getDate());
 
       const planMinutes = (sch && sch.expected_minutes !== undefined && sch.expected_minutes !== null)
-        ? sch.expected_minutes
-        : null;
-
+        ? sch.expected_minutes : null;
       const factWorked = (r.worked_minutes !== undefined && r.worked_minutes !== null)
-        ? r.worked_minutes
-        : null;
+        ? r.worked_minutes : null;
 
-      planData.push(planMinutes !== null ? (planMinutes / 60) : 0);
-      factData.push(factWorked !== null ? (factWorked / 60) : 0);
+      planData.push(planMinutes !== null ? +(planMinutes / 60).toFixed(2) : 0);
+      factData.push(factWorked !== null ? +(factWorked / 60).toFixed(2) : 0);
     });
 
     chartInstance = new Chart(ctx, {
-      type: "line",
+      type: "bar",
       data: {
-        labels: labels,
+        labels,
         datasets: [
           {
+            type: 'line',
             label: "План (год)",
             data: planData,
-            borderColor: "rgba(74,144,226,0.8)",
-            backgroundColor: "rgba(74,144,226,0.2)",
-            tension: 0.2
+            borderColor: "rgba(74,144,226,0.9)",
+            backgroundColor: "transparent",
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: "rgba(74,144,226,0.9)",
+            tension: 0.3,
+            order: 1,
           },
           {
+            type: 'bar',
             label: "Факт (год)",
             data: factData,
-            borderColor: "rgba(45,204,112,0.8)",
-            backgroundColor: "rgba(45,204,112,0.2)",
-            tension: 0.2
+            backgroundColor: factData.map((v,i) => v >= planData[i] ? "rgba(45,204,112,0.55)" : "rgba(255,77,77,0.45)"),
+            borderColor: factData.map((v,i) => v >= planData[i] ? "rgba(45,204,112,0.85)" : "rgba(255,77,77,0.75)"),
+            borderWidth: 1,
+            borderRadius: 4,
+            order: 2,
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: {
             display: true,
-            labels: { color: "rgba(255,255,255,0.88)" }
+            labels: { color: textColor, font: { size: 12 }, boxWidth: 14 }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const h = Math.floor(ctx.raw);
+                const m = Math.round((ctx.raw - h) * 60);
+                return ` ${ctx.dataset.label}: ${h}г ${String(m).padStart(2,'0')}хв`;
+              }
+            }
           }
         },
         scales: {
           x: {
-            ticks: { color: "rgba(255,255,255,0.70)" },
-            grid: { color: "rgba(255,255,255,0.08)" }
+            ticks: { color: textColor, font: { size: 11 } },
+            grid: { color: gridColor }
           },
           y: {
-            ticks: { color: "rgba(255,255,255,0.70)" },
-            grid: { color: "rgba(255,255,255,0.08)" },
+            ticks: { color: textColor, font: { size: 11 },
+              callback: v => v + 'г'
+            },
+            grid: { color: gridColor },
             beginAtZero: true
           }
         }
@@ -2987,21 +3450,12 @@ async function loadSchedule() {
   const monthVal = document.getElementById("schedMonth").value;
   const empId = Number(document.getElementById("schedEmp").value || 0);
 
-  if (!monthVal) {
-    alert("Оберіть місяць");
-    return;
-  }
+  if (!monthVal) { toast('Оберіть місяць', 'warn'); return; }
 
   const range = monthToRange(monthVal);
-  if (!range) {
-    alert("Невірний місяць");
-    return;
-  }
+  if (!range) { toast('Невірний місяць', 'error'); return; }
 
-  if (mode === "single" && !empId) {
-    alert("Оберіть співробітника");
-    return;
-  }
+  if (mode === "single" && !empId) { toast('Оберіть співробітника', 'warn'); return; }
 
   if (mode === "single") {
     // Режим одного співробітника
@@ -3154,17 +3608,9 @@ async function loadSchedule() {
 
 async function openSchedulePdf() {
   const monthVal = document.getElementById("schedMonth").value;
-
-  if (!monthVal) {
-    alert("Оберіть місяць");
-    return;
-  }
-
+  if (!monthVal) { toast('Оберіть місяць', 'warn'); return; }
   const range = monthToRange(monthVal);
-  if (!range) {
-    alert("Невірний місяць");
-    return;
-  }
+  if (!range) { toast('Невірний місяць', 'error'); return; }
 
   const from = range.from;
   const to = range.to;
@@ -3172,7 +3618,7 @@ async function openSchedulePdf() {
     const res = await apiFetch(`/schedule/pdf?date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      alert(`Помилка PDF: HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      toast(`Помилка PDF: HTTP ${res.status}\n${fmtJsonError(txt)}`, 'error');
       return;
     }
 
@@ -3431,7 +3877,7 @@ const muted0 = (!displayText || displayText === "—" || displayText === "0") ? 
     }
 
     pbRenderMatrix();
-    pbSetInfo("Застосовано локально. Тепер натисніть Зберегти.");
+    pbSetInfo("✅ Застосовано! Натисніть «Зберегти на сервер»");
   }
 
 function pbClearSelectedCells() {
@@ -3520,6 +3966,8 @@ async function pbSaveSelected() {
 
   pbRenderMatrix();
   pbSetInfo(`✅ Збережено: ${successCount}, помилок: ${errorCount}`);
+  if (errorCount === 0) toast(`Збережено ${successCount} записів`, 'success');
+  else toast(`Збережено ${successCount}, помилок: ${errorCount}`, 'warn');
 }
 
 
@@ -3888,11 +4336,10 @@ function dashToday() {
 
 async function loadDashboard() {
   const dateVal = document.getElementById('dashDate').value;
-  if (!dateVal) {
-    dashToday();
-    return;
-  }
+  if (!dateVal) { dashToday(); return; }
 
+  const tbody = document.querySelector('#dashTable tbody');
+  if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading"><span class="spinner"></span> Завантаження…</td></tr>`;
   document.getElementById('dashCount').textContent = 'Завантаження…';
 
   try {
@@ -3905,23 +4352,23 @@ async function loadDashboard() {
     const data = await res.json();
     _dashEvents = data.events || [];
 
-    // Підсумки
     const totalIn = _dashEvents.filter(e => e.direction === 'IN').length;
     const totalOut = _dashEvents.filter(e => e.direction === 'OUT').length;
     const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
 
     const summaryEl = document.getElementById('dashSummary');
     summaryEl.innerHTML = `
-      <div class="status-pill"><span class="dot ok"></span> <span>Всього: ${_dashEvents.length}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: ${totalIn}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: ${totalOut}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: ${uniqueEmps}</span></div>
+      <div class="status-pill"><span class="dot ok"></span> <span>Всього: <b>${_dashEvents.length}</b></span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: <b>${totalIn}</b></span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: <b>${totalOut}</b></span></div>
+      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: <b>${uniqueEmps}</b></span></div>
     `;
 
     dashApplyFilter();
   } catch (e) {
     console.error('Помилка завантаження дашборду:', e);
     document.getElementById('dashCount').textContent = `Помилка: ${e.message}`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading" style="color:var(--bad);">\u274c ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -3951,25 +4398,25 @@ function renderDashTable(events) {
   tbody.innerHTML = '';
 
   if (!events || events.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="6" style="text-align:center; color:var(--muted);">Немає подій за цей день</td>`;
-    tbody.appendChild(tr);
+    tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><div class="table-empty-icon">📋</div><div class="table-empty-text">Немає подій за цей день</div><div class="table-empty-sub">Спробуйте іншу дату або змініть фільтр</div></div></td></tr>`;
     return;
   }
 
   events.forEach(e => {
     const tr = document.createElement('tr');
-    const dirClass = e.direction === 'IN' ? 'ok' : 'warn';
-    const dirIcon = e.direction === 'IN' ? '⬆️' : '⬇️';
-    const manualBadge = e.is_manual ? ' <span class="badge auto">ручна</span>' : '';
+    const isIn = e.direction === 'IN';
+    const dirBadge = isIn
+      ? `<span class="badge good">↑ IN</span>`
+      : `<span class="badge warn">↓ OUT</span>`;
+    const manualBadge = e.is_manual ? ` <span class="badge auto">ручна</span>` : '';
 
     tr.innerHTML = `
-      <td style="font-weight:900; font-variant-numeric:tabular-nums;">${escapeHtml(e.ts_local)}</td>
-      <td><span class="badge ${dirClass}">${dirIcon} ${e.direction}</span>${manualBadge}</td>
-      <td>${escapeHtml(e.employee_name)}</td>
-      <td class="muted">${escapeHtml(e.position)}</td>
-      <td>${e.terminal_name ? escapeHtml(e.terminal_name) : (e.terminal_id ? 'ID:' + e.terminal_id : '—')}</td>
-      <td class="muted" style="max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(e.comment)}">${escapeHtml(e.comment)}</td>
+      <td style="font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;">${escapeHtml(e.ts_local)}</td>
+      <td>${dirBadge}${manualBadge}</td>
+      <td style="font-weight:600;">${escapeHtml(e.employee_name)}</td>
+      <td class="muted" style="font-size:12px;">${escapeHtml(e.position || '—')}</td>
+      <td style="font-size:12px;">${e.terminal_name ? escapeHtml(e.terminal_name) : (e.terminal_id ? 'ID:' + e.terminal_id : '—')}</td>
+      <td class="muted" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px;" title="${escapeHtml(e.comment || '')}">${escapeHtml(e.comment || '—')}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -4183,46 +4630,47 @@ function renderTerminalsTable(terminals) {
   tbody.innerHTML = '';
 
   if (!terminals || terminals.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="4" style="text-align:center; color:var(--muted);">Немає терміналів</td>`;
-    tbody.appendChild(tr);
+    tbody.innerHTML = `<tr><td colspan="5"><div class="table-empty"><div class="table-empty-icon">🖥</div><div class="table-empty-text">Терміналів немає</div><div class="table-empty-sub">Створіть перший термінал нижче</div></div></td></tr>`;
     return;
   }
 
-terminals.forEach(t => {
+  terminals.forEach(t => {
     const tr = document.createElement('tr');
+    const isActive = t.is_active !== false;
+    const activeBadge = isActive
+      ? `<span class="badge good">✓ Активний</span>`
+      : `<span class="badge bad">⛔ Деакт.</span>`;
 
-    // Визначаємо статус по last_seen_at
-    let statusHtml;
+    let lastSeenHtml;
     if (!t.last_seen_at) {
-      statusHtml = `<span title="Ніколи не підключався">⚫ Немає даних</span>`;
+      lastSeenHtml = `<span class="muted">Ніколи</span>`;
     } else {
       const secAgo = (Date.now() - new Date(t.last_seen_at).getTime()) / 1000;
-      if (secAgo < 300) {         // < 5 хв
-        const m = Math.floor(secAgo / 60);
-        const s = Math.floor(secAgo % 60);
-        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🟢 ${m}хв ${s}с тому</span>`;
-      } else if (secAgo < 3600) { // < 1 год
-        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🟡 ${Math.floor(secAgo/60)} хв тому</span>`;
+      const ts = new Date(t.last_seen_at).toLocaleString('uk-UA');
+      if (secAgo < 300) {
+        const m = Math.floor(secAgo / 60), s = Math.floor(secAgo % 60);
+        lastSeenHtml = `<span class="badge good" title="${ts}">🟢 ${m}хв ${s}с тому</span>`;
+      } else if (secAgo < 3600) {
+        lastSeenHtml = `<span class="badge warn" title="${ts}">🟡 ${Math.floor(secAgo/60)} хв тому</span>`;
       } else {
-        statusHtml = `<span title="${new Date(t.last_seen_at).toLocaleString('uk-UA')}">🔴 ${Math.floor(secAgo/3600)} год тому</span>`;
+        lastSeenHtml = `<span class="badge bad" title="${ts}">🔴 ${Math.floor(secAgo/3600)}год тому</span>`;
       }
     }
 
     tr.innerHTML = `
-      <td>${t.id}</td>
-      <td>${escapeHtml(t.name)}</td>
-      <td>${statusHtml}</td>
+      <td style="font-weight:700; color:var(--muted);">#${t.id}</td>
+      <td style="font-weight:600;">${escapeHtml(t.name)}</td>
+      <td>${activeBadge} ${lastSeenHtml}</td>
       <td>
         <div style="display:flex; align-items:center; gap:8px;">
-          <code id="key-${t.id}" style="font-size:12px; word-break:break-all; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">${escapeHtml(t.api_key)}</code>
-          <button class="btn secondary" style="padding:6px 10px; font-size:11px; white-space:nowrap;" onclick="copyApiKey(${t.id})">Копіювати</button>
+          <code id="key-${t.id}" style="font-size:11px; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:8px; border:1px solid var(--border); max-width:180px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:middle;">${escapeHtml(t.api_key)}</code>
+          <button class="btn secondary" style="padding:5px 10px; font-size:11px;" onclick="copyApiKey(${t.id})">Copy</button>
         </div>
       </td>
       <td>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <button class="btn" style="padding:6px 10px; font-size:11px;" onclick="showTerminalQr(${t.id}, '${escapeHtml(t.name)}', '${escapeHtml(t.api_key)}')">QR</button>
-          <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">\u21BB Змінити ключ</button>
+          <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">&#8635; Ключ</button>
         </div>
       </td>
     `;
@@ -4235,14 +4683,8 @@ function copyApiKey(terminalId) {
   if (!el) return;
   const key = el.textContent.trim();
   navigator.clipboard.writeText(key).then(() => {
-    const infoEl = document.getElementById('terminalInfo');
-    if (infoEl) {
-      infoEl.textContent = `\u2705 API-ключ скопійовано в буфер обміну!`;
-      infoEl.style.display = 'block';
-      setTimeout(() => { infoEl.style.display = 'none'; }, 3000);
-    }
+    toast('API-ключ скопійовано!', 'success');
   }).catch(() => {
-    // Fallback
     prompt('Скопіюйте ключ:', key);
   });
 }
@@ -4582,6 +5024,7 @@ async function createUser() {
     document.getElementById('newUserPassword').value = '';
     infoEl.textContent = `✅ Створено: ${data.username} (${data.role})`;
     infoEl.style.display = 'block';
+    toast(`Адміністратора "${data.username}" створено!`, 'success');
     await loadUsers();
   } catch(e) {
     errEl.textContent = String(e.message || e);
@@ -4628,6 +5071,7 @@ async function saveUserEdit() {
     if (!res.ok) throw new Error(fmtJsonError(await res.text().catch(() => '')));
     infoEl.textContent = '✅ Збережено';
     infoEl.style.display = 'block';
+    toast('Дані адміністратора оновлено', 'success');
     await loadUsers();
     setTimeout(() => cancelUserEdit(), 1500);
   } catch(e) {
@@ -4637,13 +5081,15 @@ async function saveUserEdit() {
 }
 
 async function deleteUser(id, username) {
-  if (!confirm(`Видалити користувача "${username}"? Цю дію не можна відмінити.`)) return;
+  const ok = await showConfirm(`Видалити користувача "${username}"? Цю дію не можна відмінити.`, 'Видалення', 'Видалити', true);
+  if (!ok) return;
   try {
     const res = await apiFetch(`/users/${id}`, {method:'DELETE'});
     if (!res.ok && res.status !== 204) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    toast(`Користувача видалено`, 'success');
     await loadUsers();
   } catch(e) {
-    alert('Помилка: ' + String(e.message || e));
+    toast(String(e.message || e), 'error', 'Помилка');
   }
 }
 
@@ -4729,6 +5175,7 @@ async function createPosition() {
     document.getElementById('newPositionName').value = '';
     infoEl.textContent = `✅ Посаду "${data.name}" створено`;
     infoEl.style.display = 'block';
+    toast(`Посаду "${data.name}" створено`, 'success');
     await loadPositions();
   } catch(e) {
     errEl.textContent = String(e.message || e);
@@ -4777,13 +5224,15 @@ async function savePosEdit() {
 }
 
 async function deletePosition(id, name) {
-  if (!confirm(`Видалити посаду "${name}"?\nЯкщо вона використовується — буде деактивована (не видалена).`)) return;
+  const ok = await showConfirm(`Видалити посаду "${name}"?\nЯкщо вона використовується — буде деактивована (не видалена).`, 'Видалення', 'Видалити', true);
+  if (!ok) return;
   try {
     const res = await apiFetch(`/positions/${id}`, {method:'DELETE'});
     if (!res.ok && res.status !== 204) throw new Error(fmtJsonError(await res.text().catch(() => '')));
+    toast('Посаду видалено', 'success');
     await loadPositions();
   } catch(e) {
-    alert('Помилка: ' + String(e.message || e));
+    toast(String(e.message || e), 'error', 'Помилка');
   }
 }
 
@@ -4895,6 +5344,7 @@ async function createTerminal() {
 
     const data = await res.json();
     nameInput.value = '';
+    toast(`Термінал "${data.name}" створено!`, 'success');
     await loadTerminals();
 
     infoEl.innerHTML = `\u2705 Термінал створено!<br><b>ID:</b> ${data.id}<br><b>Назва:</b> ${escapeHtml(data.name)}<br><b>API-ключ:</b> <code>${escapeHtml(data.api_key)}</code><br><br>Показати QR-код для налаштування Android-терміналу.`;

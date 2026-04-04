@@ -61,6 +61,14 @@ def get_current_terminal(
         logger.warning("Invalid terminal key attempt")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid terminal key")
 
+    # БАГ ВИПРАВЛЕНО: перевірка активності терміналу
+    if not terminal.is_active:
+        logger.warning(f"Deactivated terminal attempted access: id={terminal.id}, name={terminal.name}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Terminal '{terminal.name}' is deactivated"
+        )
+
     try:
         terminal.last_seen_at = datetime.now(timezone.utc)
         db.commit()

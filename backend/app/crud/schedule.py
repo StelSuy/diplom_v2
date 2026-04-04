@@ -1,4 +1,4 @@
-﻿# app/crud/schedule.py
+# app/crud/schedule.py
 from __future__ import annotations
 
 import re

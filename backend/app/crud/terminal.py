@@ -1,4 +1,4 @@
-﻿import secrets
+import secrets
 from sqlalchemy.orm import Session
 
 from app.models.terminal import Terminal

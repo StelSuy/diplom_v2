@@ -1,4 +1,4 @@
-﻿# app/db/init_db.py
+# app/db/init_db.py
 from __future__ import annotations
 
 from app.db.session import engine, SessionLocal
