@@ -1049,9 +1049,13 @@ tbody tr { animation: rowIn 0.18s ease; }
             </div>
           </div>
 
-          <div style="display:flex; gap:14px; margin-top:12px; flex-wrap:wrap; align-items:center;" id="dashSummary">
-            <div class="status-pill"><span class="dot"></span> <span id="dashCount">Завантаження…</span></div>
+          <div style="display:flex; gap:14px; margin-top:12px; flex-wrap:wrap; align-items:center;">
+            <!-- статичний індикатор кількості (не замінюється) -->
+            <div class="status-pill"><span class="dot" id="dashCountDot"></span> <span id="dashCount">—</span></div>
+            <!-- статичний WS-індикатор (не замінюється) -->
             <div class="status-pill" id="wsIndicator" title="WebSocket live-оновлення"><span class="dot"></span> <span>Connecting…</span></div>
+            <!-- динамічна зона IN/OUT/Співробітників -->
+            <div id="dashSummaryExtra" style="display:contents;"></div>
           </div>
 
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
@@ -4262,6 +4266,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let _dashEvents = [];
 let _dashWs = null;
+let _dashLoading = false;  // guard against concurrent loads
+
+function _dashSetCount(text, ok) {
+  const el = document.getElementById('dashCount');
+  const dot = document.getElementById('dashCountDot');
+  if (el)  el.textContent = text;
+  if (dot) dot.className = 'dot' + (ok === true ? ' ok' : ok === false ? ' bad' : '');
+}
+
+function _dashSetSummaryExtra(total, totalIn, totalOut, uniqueEmps) {
+  const el = document.getElementById('dashSummaryExtra');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: <b>${totalIn}</b></span></div>
+    <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: <b>${totalOut}</b></span></div>
+    <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: <b>${uniqueEmps}</b></span></div>
+  `;
+  _dashSetCount(`Всього: ${total}`, true);
+}
 
 function dashConnectWs() {
   // Закриваємо старе з'єднання
@@ -4321,20 +4344,11 @@ function dashOnNewScan(data) {
   // Додаємо на початок масиву
   _dashEvents.unshift(data);
 
-  // Оновлюємо підсумки
+  // Оновлюємо підсумки через безпечні хелпери
   const totalIn = _dashEvents.filter(e => e.direction === 'IN').length;
   const totalOut = _dashEvents.filter(e => e.direction === 'OUT').length;
   const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
-
-  const summaryEl = document.getElementById('dashSummary');
-  if (summaryEl) {
-    summaryEl.innerHTML = `
-      <div class="status-pill"><span class="dot ok"></span> <span>Всього: ${_dashEvents.length}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: ${totalIn}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: ${totalOut}</span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: ${uniqueEmps}</span></div>
-    `;
-  }
+  _dashSetSummaryExtra(_dashEvents.length, totalIn, totalOut, uniqueEmps);
 
   // Перерендер таблиці з урахуванням фільтрів
   dashApplyFilter();
@@ -4342,34 +4356,42 @@ function dashOnNewScan(data) {
 
 function dashToday() {
   const now = new Date();
-  document.getElementById('dashDate').value = ymd(now);
+  const dateEl = document.getElementById('dashDate');
+  if (dateEl) dateEl.value = ymd(now);
   loadDashboard();
 }
 
 async function loadDashboard() {
-  const dateVal = document.getElementById('dashDate').value;
-  if (!dateVal) { dashToday(); return; }
+  // Захист від паралельних викликів
+  if (_dashLoading) return;
 
-  // Перевіряємо токен — якщо немає, показуємо порожній стан (не спіннер)
+  // Якщо дата не вказана — підставляємо сьогодні
+  const dateEl = document.getElementById('dashDate');
+  if (!dateEl) return;
+  if (!dateEl.value) dateEl.value = ymd(new Date());
+  const dateVal = dateEl.value;
+
   const token = getToken();
   const tbody = document.querySelector('#dashTable tbody');
 
+  // Немає токену — показуємо порожній стан без спіннера
   if (!token) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><div class="table-empty-icon">🔒</div><div class="table-empty-text">Потрібна авторизація</div><div class="table-empty-sub">Увійдіть в систему щоб побачити сканування</div></div></td></tr>`;
-    document.getElementById('dashCount').textContent = 'Не авторизовано';
+    _dashSetCount('Не авторизовано', false);
     return;
   }
 
+  _dashLoading = true;
   if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading"><span class="spinner"></span> Завантаження…</td></tr>`;
-  document.getElementById('dashCount').textContent = 'Завантаження…';
+  _dashSetCount('Завантаження…', null);
 
   try {
     const res = await apiFetch(`/stats/recent-scans?scan_date=${encodeURIComponent(dateVal)}`);
 
-    // 401 — токен протух, apiFetch вже відкрив модалку — показуємо порожній стан
+    // 401 — токен протух
     if (res.status === 401) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><div class="table-empty-icon">🔒</div><div class="table-empty-text">Сесія завершена</div><div class="table-empty-sub">Введіть логін і пароль знову</div></div></td></tr>`;
-      document.getElementById('dashCount').textContent = 'Потрібен вхід';
+      _dashSetCount('Потрібен вхід', false);
       return;
     }
 
@@ -4384,20 +4406,15 @@ async function loadDashboard() {
     const totalIn = _dashEvents.filter(e => e.direction === 'IN').length;
     const totalOut = _dashEvents.filter(e => e.direction === 'OUT').length;
     const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
-
-    const summaryEl = document.getElementById('dashSummary');
-    if (summaryEl) summaryEl.innerHTML = `
-      <div class="status-pill"><span class="dot ok"></span> <span>Всього: <b>${_dashEvents.length}</b></span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: <b>${totalIn}</b></span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: <b>${totalOut}</b></span></div>
-      <div class="status-pill"><span class="dot" style="background:var(--accent);"></span> <span>Співробітників: <b>${uniqueEmps}</b></span></div>
-    `;
+    _dashSetSummaryExtra(_dashEvents.length, totalIn, totalOut, uniqueEmps);
 
     dashApplyFilter();
   } catch (e) {
     console.error('Помилка завантаження дашборду:', e);
-    document.getElementById('dashCount').textContent = 'Помилка';
+    _dashSetCount('Помилка', false);
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading" style="color:var(--bad);">\u274c ${escapeHtml(e.message)}</td></tr>`;
+  } finally {
+    _dashLoading = false;
   }
 }
 
