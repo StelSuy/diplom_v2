@@ -1,0 +1,60 @@
+# =============================================================================
+#  TimeTracker — .dockerignore
+#  Excludes files/dirs from Docker build context
+# =============================================================================
+
+# ── Git & IDE ─────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+.idea
+.vscode
+
+# ── Python cache (never needed in image) ─────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Secrets (MUST NOT go into image) ─────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+# Keep .env.example — it's documentation, not secrets
+!.env.example
+
+# ── Database files ────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+backups/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Docs & scripts (not needed in image) ─────────────────────────────────────
+docs/
+*.md
+deploy.sh
+update.sh
+backup.sh
+
+# ── Docker config itself (not needed inside container) ───────────────────────
+Dockerfile
+docker-compose*.yml
+docker/nginx/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

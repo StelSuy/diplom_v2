@@ -26,7 +26,7 @@ def _create_engine() -> Engine:
     # Engine configuration
     engine_kwargs = {
         "echo": settings.sql_echo,
-        "pool_pre_ping": True,  # Verify connections before using
+        "pool_pre_ping": settings.db_pool_pre_ping,
         "pool_recycle": settings.db_pool_recycle,
     }
     

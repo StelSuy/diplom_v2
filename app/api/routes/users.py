@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import User, UserRole
 from app.core.security import hash_password
-from app.api.dependencies import require_admin, get_current_user
+from app.api.deps import require_admin, get_current_user
 from app.security.audit import audit_log
 from pydantic import BaseModel, Field
 
