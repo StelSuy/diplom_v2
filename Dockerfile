@@ -49,20 +49,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-EXPOSE 8000
+# PORT — Railway injects this automatically; fallback to 8000 for local/VPS
+ENV PORT=8000
+EXPOSE ${PORT}
 
-# Healthcheck — проверяет /health каждые 30 секунд
+# Healthcheck — uses $PORT so it works both on Railway and bare-metal
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Production: gunicorn + uvicorn workers
-# Workers = 2*CPU+1, переопределяются через GUNICORN_WORKERS в .env
+# On Railway PORT is injected automatically.
+# On VPS/local it defaults to 8000 (override via GUNICORN_WORKERS / GUNICORN_TIMEOUT).
 CMD ["sh", "-c", \
      "alembic upgrade head && \
       gunicorn app.main:app \
         --worker-class uvicorn.workers.UvicornWorker \
         --workers ${GUNICORN_WORKERS:-2} \
-        --bind 0.0.0.0:8000 \
+        --bind 0.0.0.0:${PORT:-8000} \
         --timeout ${GUNICORN_TIMEOUT:-120} \
         --keepalive 5 \
         --access-logfile - \
