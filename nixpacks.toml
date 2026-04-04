@@ -1,0 +1,14 @@
+# =============================================================================
+#  Nixpacks configuration (fallback if Dockerfile is not used)
+#  Railway can use either Dockerfile or Nixpacks — Dockerfile is preferred.
+#  This file ensures system deps are available if Nixpacks is selected.
+# =============================================================================
+
+[phases.setup]
+nixPkgs = ["python312", "gcc", "libmysqlclient"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "alembic upgrade head && gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --workers 2 --bind 0.0.0.0:$PORT --timeout 120"
