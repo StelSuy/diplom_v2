@@ -2148,6 +2148,7 @@ tbody tr { animation: rowIn 0.18s ease; }
       setStatus(true, "Авторизовано");
       toast('Успішний вхід!', 'success', 'Авторизація');
       await loadEmployees();
+      await loadDashboard();
     } catch (e) {
       errBox.textContent = String(e?.message || e);
       errBox.style.display = "block";
@@ -4348,15 +4349,32 @@ async function loadDashboard() {
   const dateVal = document.getElementById('dashDate').value;
   if (!dateVal) { dashToday(); return; }
 
+  // Перевіряємо токен — якщо немає, показуємо порожній стан (не спіннер)
+  const token = getToken();
   const tbody = document.querySelector('#dashTable tbody');
+
+  if (!token) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><div class="table-empty-icon">🔒</div><div class="table-empty-text">Потрібна авторизація</div><div class="table-empty-sub">Увійдіть в систему щоб побачити сканування</div></div></td></tr>`;
+    document.getElementById('dashCount').textContent = 'Не авторизовано';
+    return;
+  }
+
   if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading"><span class="spinner"></span> Завантаження…</td></tr>`;
   document.getElementById('dashCount').textContent = 'Завантаження…';
 
   try {
     const res = await apiFetch(`/stats/recent-scans?scan_date=${encodeURIComponent(dateVal)}`);
+
+    // 401 — токен протух, apiFetch вже відкрив модалку — показуємо порожній стан
+    if (res.status === 401) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="table-empty"><div class="table-empty-icon">🔒</div><div class="table-empty-text">Сесія завершена</div><div class="table-empty-sub">Введіть логін і пароль знову</div></div></td></tr>`;
+      document.getElementById('dashCount').textContent = 'Потрібен вхід';
+      return;
+    }
+
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status}\n${fmtJsonError(txt)}`);
+      throw new Error(`HTTP ${res.status} ${fmtJsonError(txt)}`);
     }
 
     const data = await res.json();
@@ -4367,7 +4385,7 @@ async function loadDashboard() {
     const uniqueEmps = new Set(_dashEvents.map(e => e.employee_id)).size;
 
     const summaryEl = document.getElementById('dashSummary');
-    summaryEl.innerHTML = `
+    if (summaryEl) summaryEl.innerHTML = `
       <div class="status-pill"><span class="dot ok"></span> <span>Всього: <b>${_dashEvents.length}</b></span></div>
       <div class="status-pill"><span class="dot" style="background:var(--ok);"></span> <span>IN: <b>${totalIn}</b></span></div>
       <div class="status-pill"><span class="dot" style="background:var(--warn);"></span> <span>OUT: <b>${totalOut}</b></span></div>
@@ -4377,7 +4395,7 @@ async function loadDashboard() {
     dashApplyFilter();
   } catch (e) {
     console.error('Помилка завантаження дашборду:', e);
-    document.getElementById('dashCount').textContent = `Помилка: ${e.message}`;
+    document.getElementById('dashCount').textContent = 'Помилка';
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="table-loading" style="color:var(--bad);">\u274c ${escapeHtml(e.message)}</td></tr>`;
   }
 }
