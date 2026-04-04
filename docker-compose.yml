@@ -42,6 +42,8 @@ services:
     container_name: timetracker_api
     restart: unless-stopped
     env_file: .env
+    # DATABASE_URL будується тут щоб гарантовано вказував на контейнер "db"
+    # (перевизначає значення з .env якщо там вказано інший хост)
     environment:
       DATABASE_URL: mysql+pymysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}?charset=utf8mb4
     depends_on:

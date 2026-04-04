@@ -1,230 +1,205 @@
 # TimeTracker
 
-**Employee attendance tracking system via NFC terminals.**
+**Система обліку робочого часу через NFC-термінали.**
 
-A production-ready FastAPI backend with a built-in admin panel, WebSocket live updates, MySQL database, and Docker deployment.
-
----
-
-## Features
-
-- **NFC terminal support** — secure scan flow with challenge-response signature verification
-- **Real-time dashboard** — WebSocket live feed of employee scans
-- **Admin panel** — full SPA (no external build tools required)
-- **Worktime analytics** — daily/weekly/monthly reports, PDF & Excel export
-- **Schedule management** — plan vs. actual with PDF export
-- **Audit log** — every admin action is recorded
-- **Role-based access** — Admin, Manager, HR, Employee roles
-- **Docker-ready** — multi-stage Dockerfile, Nginx reverse proxy, Gunicorn workers
+FastAPI backend + вбудована SPA-адмінка, WebSocket live-оновлення, MySQL/SQLite, Docker.
 
 ---
 
-## Quick Start (Docker)
+## Можливості
 
-### 1. Clone & configure
+- NFC-термінали — захищений протокол challenge-response
+- Live-дашборд — WebSocket оновлення сканувань у реальному часі
+- Аналітика — денні/тижневі/місячні звіти, PDF та Excel-експорт
+- Графік змін — планування + PDF-експорт з красивим оформленням
+- Журнал аудиту — кожна дія адміна фіксується
+- Ролі — Admin, Manager, HR, Employee
+
+---
+
+## Швидкий старт
+
+### Варіант 1 — Docker (рекомендовано)
 
 ```bash
-git clone <your-repo-url> timetracker
+git clone https://github.com/StelSuy/diplom_v2.git timetracker
 cd timetracker
 
+# Налаштувати змінні оточення
 cp .env.example .env
-nano .env           # fill in DB_ROOT_PASSWORD, DB_PASSWORD, JWT_SECRET, ADMIN_PASSWORD
-```
+nano .env   # змінити DB_ROOT_PASSWORD, DB_PASSWORD, JWT_SECRET, ADMIN_PASSWORD
 
-### 2. Deploy
-
-```bash
-chmod +x deploy.sh update.sh backup.sh
+# Запустити
+chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### 3. Open admin panel
-
-```
-http://<your-server-ip>/admin
-```
-
-Default login: `admin` / your `ADMIN_PASSWORD` from `.env`
+Адмінка: `http://localhost/admin/`
+API docs: `http://localhost/docs`
 
 ---
 
-## Development
+### Варіант 2 — Docker (без Nginx, прямий порт 8000)
+
+Підходить для локальної ВМ / тестування:
 
 ```bash
-# Copy and edit env for local dev
 cp .env.example .env
+nano .env
 
-# Start with hot-reload
-docker compose -f docker-compose.dev.yml up
-
-# Or run without Docker (requires MySQL running locally)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-API docs (dev only): http://localhost:8000/docs
+Адмінка: `http://IP_вашої_машини:8000/admin/`
 
 ---
 
-## Project Structure
+### Варіант 3 — Без Docker (SQLite, найпростіше)
+
+```bash
+git clone https://github.com/StelSuy/diplom_v2.git timetracker
+cd timetracker
+
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+cp .env.example .env
+nano .env
+```
+
+У `.env` встановити:
+```env
+DATABASE_URL=sqlite:///./timetracker.db
+JWT_SECRET=ваш_секретний_рядок_мінімум_32_символи
+ADMIN_PASSWORD=ваш_пароль
+APP_ENV=development
+ALLOWED_ORIGINS=*
+```
+
+```bash
+alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Адмінка: `http://localhost:8000/admin/`
+
+---
+
+## Налаштування .env
+
+| Змінна | Опис | Приклад |
+|--------|------|---------|
+| `DB_ROOT_PASSWORD` | Пароль root MySQL | `openssl rand -hex 16` |
+| `DB_PASSWORD` | Пароль користувача БД | `openssl rand -hex 16` |
+| `JWT_SECRET` | Секрет для JWT (**мін. 32 символи**) | `openssl rand -hex 64` |
+| `ADMIN_PASSWORD` | Пароль адміна | мін. 8 символів |
+| `ALLOWED_ORIGINS` | CORS-джерела | `*` або `https://domain.com` |
+| `APP_ENV` | Середовище | `production` / `development` |
+| `GUNICORN_WORKERS` | Кількість воркерів | `4` (2×CPU+1) |
+
+---
+
+## Розгортання на локальній ВМ
+
+### 1. Дізнатись IP ВМ
+```bash
+ip addr show | grep "inet " | grep -v 127
+# наприклад: 192.168.1.105
+```
+
+### 2. Налаштувати мережу ВМ
+У VirtualBox: **Налаштування → Мережа → Тип підключення: Мережевий міст (Bridged)**
+
+### 3. Відкрити порти в firewall (Ubuntu)
+```bash
+sudo ufw allow 8000
+sudo ufw allow 80
+```
+
+### 4. Автостарт при завантаженні системи
+
+```bash
+sudo nano /etc/systemd/system/timetracker.service
+```
+
+```ini
+[Unit]
+Description=TimeTracker
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/timetracker
+ExecStart=docker compose up
+ExecStop=docker compose down
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable timetracker
+sudo systemctl start timetracker
+```
+
+---
+
+## Структура проекту
 
 ```
 timetracker/
 ├── app/
-│   ├── api/
-│   │   ├── deps.py              # Auth dependencies (JWT, terminal key)
-│   │   ├── router.py            # Route aggregator
-│   │   └── routes/              # Feature routes
-│   │       ├── auth.py          # Login
-│   │       ├── employees.py     # Employee CRUD
-│   │       ├── terminals.py     # Terminal management + NFC scan
-│   │       ├── events.py        # NFC event recording
-│   │       ├── stats.py         # Worktime statistics
-│   │       ├── schedules.py     # Schedule management
-│   │       ├── manual_events.py # Manual attendance correction
-│   │       ├── export.py        # Excel / PDF export
-│   │       ├── audit_log.py     # Audit trail
-│   │       ├── users.py         # User management
-│   │       └── positions.py     # Job positions
-│   ├── core/
-│   │   ├── config.py            # Settings (pydantic-settings)
-│   │   ├── security.py          # JWT, password hashing
-│   │   ├── logging.py           # Logging setup
-│   │   ├── seed.py              # Initial data seeding
-│   │   └── time.py              # Timezone utilities
-│   ├── crud/                    # Database operations
-│   ├── db/                      # SQLAlchemy engine + session
-│   ├── models/                  # SQLAlchemy ORM models
-│   ├── schemas/                 # Pydantic request/response schemas
-│   ├── security/                # NFC signature verification, rate limiting
-│   ├── services/                # Business logic (worktime calculation)
-│   ├── static/                  # Admin panel SPA (index.html)
-│   ├── ws/                      # WebSocket live scan feed
-│   └── main.py                  # App factory + lifespan
-├── alembic/                     # Database migrations
+│   ├── api/          # FastAPI routers
+│   ├── core/         # config, security
+│   ├── crud/         # DB operations
+│   ├── models/       # SQLAlchemy models
+│   ├── schemas/      # Pydantic schemas
+│   ├── services/     # business logic
+│   ├── static/       # SPA admin panel (index.html)
+│   └── ws/           # WebSocket
+├── alembic/          # DB migrations
 ├── docker/
-│   ├── mysql/init.sql           # MySQL initialization
-│   └── nginx/                   # Nginx config + SSL placeholder
-├── .env.example                 # Environment template
-├── Dockerfile                   # Multi-stage production image
-├── docker-compose.yml           # Production stack
-├── docker-compose.dev.yml       # Development stack
-├── deploy.sh                    # First-time deployment script
-├── update.sh                    # Zero-downtime update script
-└── backup.sh                    # Database backup script
+│   ├── mysql/        # MySQL init script
+│   └── nginx/        # Nginx config + SSL placeholder
+├── .env.example      # ← копіювати в .env
+├── docker-compose.yml         # production (з Nginx)
+├── docker-compose.dev.yml     # development (без Nginx)
+├── Dockerfile
+├── requirements.txt
+├── deploy.sh         # перший запуск
+├── update.sh         # оновлення без downtime
+└── backup.sh         # бекап БД (для cron)
 ```
 
 ---
 
-## Environment Variables
+## API
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | ✅ | — | Full MySQL connection URL |
-| `JWT_SECRET` | ✅ | — | Min 32 chars, generate with `openssl rand -hex 64` |
-| `ADMIN_PASSWORD` | ✅ | — | Admin account password (changed from default) |
-| `DB_ROOT_PASSWORD` | ✅ | — | MySQL root password |
-| `DB_PASSWORD` | ✅ | — | MySQL app user password |
-| `APP_ENV` | | `production` | `development` or `production` |
-| `ALLOWED_ORIGINS` | | `*` | Comma-separated CORS origins |
-| `GUNICORN_WORKERS` | | `2` | Number of worker processes |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | | `60` | JWT token TTL |
-| `LOG_LEVEL` | | `info` | Logging verbosity |
+| Метод | Шлях | Опис |
+|-------|------|------|
+| `GET` | `/health` | Стан сервісу |
+| `GET` | `/admin/` | Адмін-панель |
+| `GET` | `/docs` | Swagger UI (тільки dev) |
+| `POST` | `/api/login` | Авторизація |
+| `GET` | `/api/stats/recent-scans` | Останні сканування |
+| `GET` | `/api/schedule/pdf` | Експорт графіку в PDF |
+| `GET` | `/api/export/worktime.xlsx` | Звіт по робочому часу |
+| `WS` | `/ws/scans` | Live WebSocket |
 
 ---
 
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/login` | Authenticate, get JWT token |
-| `GET` | `/api/employees/` | List employees |
-| `POST` | `/api/employees/` | Create employee |
-| `GET` | `/api/terminals/` | List NFC terminals |
-| `POST` | `/api/terminal/scan` | Record NFC scan |
-| `POST` | `/api/terminal/secure-scan` | Secure scan (challenge-response) |
-| `GET` | `/api/stats/recent-scans` | Today's scans dashboard |
-| `GET` | `/api/stats/employee/{id}/daily` | Daily worktime report |
-| `GET` | `/api/export/worktime.xlsx` | Export worktime to Excel |
-| `GET` | `/api/export/worktime.pdf` | Export worktime to PDF |
-| `GET` | `/api/audit/log` | Audit log |
-| `WS` | `/ws/scans` | Live scan feed (WebSocket) |
-| `GET` | `/health` | Health check |
-
-Full interactive docs (dev mode): `/docs`
-
----
-
-## Operations
-
-### Update deployment
+## Оновлення
 
 ```bash
 ./update.sh
 ```
 
-### Backup database
+## Бекап БД
 
 ```bash
 ./backup.sh
-
-# Backups are stored in ./backups/
-# Rotated automatically (keeps last 7 days)
+# або автоматично через cron:
+# 0 2 * * * /home/ubuntu/timetracker/backup.sh
 ```
-
-### View logs
-
-```bash
-docker compose logs -f api      # API logs
-docker compose logs -f nginx    # Nginx logs
-docker compose logs -f db       # MySQL logs
-```
-
-### Run migrations manually
-
-```bash
-docker compose exec api alembic upgrade head
-```
-
-### SSL with Certbot
-
-```bash
-# Install certbot
-apt install certbot
-
-# Get certificate
-certbot certonly --standalone -d yourdomain.com
-
-# Copy to nginx ssl dir
-cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem docker/nginx/ssl/
-cp /etc/letsencrypt/live/yourdomain.com/privkey.pem docker/nginx/ssl/
-
-# Update server_name in docker/nginx/conf.d/timetracker.conf
-# Restart nginx
-docker compose restart nginx
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Runtime | Python 3.12 |
-| Framework | FastAPI 0.115 |
-| Server | Gunicorn + Uvicorn workers |
-| Database | MySQL 8.0 + SQLAlchemy 2.0 |
-| Migrations | Alembic |
-| Auth | JWT (python-jose) + bcrypt |
-| WebSocket | FastAPI native |
-| Reverse proxy | Nginx 1.27 |
-| Container | Docker + Docker Compose |
-| Export | ReportLab (PDF) + OpenPyXL (Excel) |
-
----
-
-## License
-
-MIT
