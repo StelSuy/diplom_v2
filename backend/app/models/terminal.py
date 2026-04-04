@@ -1,4 +1,4 @@
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import TYPE_CHECKING, List, Optional
 from datetime import datetime
@@ -17,6 +17,9 @@ class Terminal(Base):
 
     # Секрет терміналу (Bearer-подібний ключ)
     api_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+
+    # Статус активності терміналу
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default="1")
 
     # Час останнього з'єднання (оновлюється при кожному запиті)
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, default=None)

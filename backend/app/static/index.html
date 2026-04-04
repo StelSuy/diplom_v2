@@ -386,6 +386,16 @@ body[data-theme="light"] {
       background: rgba(255,255,255,0.10);
       filter:none;
     }
+    .btn.warn{
+      background: linear-gradient(135deg,#f59e0b,#d97706);
+      color: #fff;
+      border: none;
+    }
+    .btn.good{
+      background: linear-gradient(135deg,#22c55e,#16a34a);
+      color: #fff;
+      border: none;
+    }
 
     .tabs{
       display:flex;
@@ -4671,6 +4681,7 @@ function renderTerminalsTable(terminals) {
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <button class="btn" style="padding:6px 10px; font-size:11px;" onclick="showTerminalQr(${t.id}, '${escapeHtml(t.name)}', '${escapeHtml(t.api_key)}')">QR</button>
           <button class="btn secondary" style="padding:6px 10px; font-size:11px;" onclick="rotateTerminalKey(${t.id}, '${escapeHtml(t.name)}')">&#8635; Ключ</button>
+          <button class="btn ${isActive ? 'warn' : 'good'}" style="padding:6px 10px; font-size:11px;" onclick="toggleTerminalActive(${t.id}, '${escapeHtml(t.name)}', ${isActive})">${isActive ? '⛔ Вимк.' : '✅ Увімк.'}</button>
         </div>
       </td>
     `;
@@ -4690,6 +4701,24 @@ function copyApiKey(terminalId) {
 }
 
 let _rotatePending = null;
+
+async function toggleTerminalActive(terminalId, terminalName, currentlyActive) {
+  const action = currentlyActive ? 'деактивувати' : 'активувати';
+  if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} термінал "${terminalName}"?`)) return;
+  const token = localStorage.getItem('token');
+  try {
+    const r = await fetch(`/api/terminals/${terminalId}/toggle_active`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || r.status);
+    const data = await r.json();
+    toast(`Термінал "${terminalName}" ${data.is_active ? 'активовано ✅' : 'деактивовано ⛔'}`, data.is_active ? 'success' : 'warn');
+    loadTerminals();
+  } catch(e) {
+    toast('Помилка: ' + e.message, 'error');
+  }
+}
 
 function rotateTerminalKey(terminalId, terminalName) {
   _rotatePending = { terminalId, terminalName };

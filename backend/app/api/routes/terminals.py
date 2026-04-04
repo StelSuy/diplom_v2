@@ -89,6 +89,7 @@ def list_terminals(
             "id": t.id,
             "name": t.name,
             "api_key": t.api_key,
+            "is_active": t.is_active,
             "last_seen_at": t.last_seen_at.isoformat() if t.last_seen_at else None,
         }
         for t in terminals
@@ -125,6 +126,24 @@ def rotate_key(
         "terminal_id": term.id, "name": term.name,
     })
     return {"id": term.id, "name": term.name, "api_key": term.api_key}
+
+
+@router.patch("/{terminal_id}/toggle_active")
+def toggle_terminal_active(
+    terminal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Enable or disable a terminal."""
+    term = db.get(Terminal, terminal_id)
+    if not term:
+        raise HTTPException(status_code=404, detail="Terminal not found")
+    term.is_active = not term.is_active
+    db.commit()
+    db.refresh(term)
+    action = "terminal_activated" if term.is_active else "terminal_deactivated"
+    audit_log(action, current_user.username, details={"terminal_id": term.id, "name": term.name})
+    return {"id": term.id, "name": term.name, "is_active": term.is_active}
 
 
 # =========================
