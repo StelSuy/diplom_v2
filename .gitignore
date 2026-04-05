@@ -55,7 +55,7 @@ Thumbs.db
 *.log
 logs/
 
-# ── Database files ────────────────────────────────────────────────────────────
+# ── Database files (лише для локальної розробки) ──────────────────────────────
 *.db
 *.sqlite
 *.sqlite3
@@ -65,18 +65,28 @@ backups/
 *.sql.gz
 *.dump
 
-# ── Docker ───────────────────────────────────────────────────────────────────
-docker/nginx/ssl/          # SSL certificates — store separately
-# docker volumes are not files, but named mounts appear here on some systems
+# ── Alembic (автогенеровані файли не потрібні в git якщо є в __pycache__) ────
+# alembic/versions/ — НЕ ігноруємо, міграції мають бути в git!
 
-# ── Temporary files ───────────────────────────────────────────────────────────
-fake_dump.sql
+# ── Docker ───────────────────────────────────────────────────────────────────
+docker/nginx/ssl/          # SSL-сертифікати — зберігати окремо, не в git
+# Docker volumes — не файли, але на деяких системах з'являються
+
+# ── Тимчасові / сміттєві файли ────────────────────────────────────────────────
 _trash_*
+fake_dump.sql
 tmp/
 temp/
 _trash/
 *.bak
 *.tmp
+
+# ── Статична адмінка (якщо генерується з фронтенд-проекту) ───────────────────
+# app/static/ — НЕ ігноруємо, якщо index.html зберігається вручну.
+# Якщо фронтенд збирається окремо (npm build → copy):
+# app/static/assets/
+# app/static/*.js
+# app/static/*.css
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
