@@ -92,6 +92,5 @@ volumes:
 networks:
   internal:
     driver: bridge
-    internal: true          # DB не доступна снаружи
   public:
     driver: bridge
