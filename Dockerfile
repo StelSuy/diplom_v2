@@ -67,7 +67,6 @@ CMD ["sh", "-c", \
         --workers ${GUNICORN_WORKERS:-2} \
         --bind 0.0.0.0:${PORT:-8000} \
         --timeout ${GUNICORN_TIMEOUT:-120} \
-        --keepalive 5 \
         --access-logfile - \
         --error-logfile - \
         --log-level ${LOG_LEVEL:-info}"]
