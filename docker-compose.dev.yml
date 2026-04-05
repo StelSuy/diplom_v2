@@ -7,7 +7,6 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: timetracker_db_dev
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: devroot
@@ -33,7 +32,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    container_name: timetracker_api_dev
     restart: unless-stopped
     env_file: .env
     environment:
