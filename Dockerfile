@@ -61,10 +61,15 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # On Railway PORT is injected automatically.
 # On VPS/local it defaults to 8000 (override via GUNICORN_WORKERS / GUNICORN_TIMEOUT).
 CMD ["sh", "-c", \
-     "alembic upgrade head && \
+     "echo 'Waiting for MySQL...' && \
+      until mysql -h db -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} -e 'SELECT 1' > /dev/null 2>&1; do \
+        echo 'DB not ready, retrying in 3s...'; sleep 3; \
+      done && \
+      echo 'DB is ready!' && \
+      alembic upgrade head && \
       gunicorn app.main:app \
         --worker-class uvicorn.workers.UvicornWorker \
-        --workers ${GUNICORN_WORKERS:-2} \
+        --workers ${GUNICORN_WORKERS:-1} \
         --bind 0.0.0.0:${PORT:-8000} \
         --timeout ${GUNICORN_TIMEOUT:-120} \
         --access-logfile - \

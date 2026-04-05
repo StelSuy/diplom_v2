@@ -16,7 +16,7 @@ alembic==1.14.0
 pymysql==1.1.1
 
 # Security & Authentication
-passlib[bcrypt]==1.7.4
+# passlib вилучено: несумісний з bcrypt>=4.x і дає WARNING при старті. Код вже використовує bcrypt напряму.
 python-jose[cryptography]==3.3.0
 cryptography==44.0.0
 bcrypt==4.2.1

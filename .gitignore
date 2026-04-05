@@ -3,7 +3,9 @@
 # =============================================================================
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
-# .env is committed intentionally (contains no real secrets for local dev)
+# .env НЕ повинен потрапляти в git — він містить реальні паролі.
+# Для налаштування: cp .env.example .env && змініть значення.
+.env
 .env.local
 .env.production
 .env.staging
