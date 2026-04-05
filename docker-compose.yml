@@ -57,8 +57,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "5" }
