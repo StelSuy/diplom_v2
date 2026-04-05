@@ -22,9 +22,9 @@ services:
     networks:
       - internal
     healthcheck:
-      # Проверяем не просто пинг, а реальное подключение с учётными данными приложения.
-      # Это гарантирует что база данных и пользователь уже созданы перед стартом API.
-      test: ["CMD-SHELL", "mysql -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE -e 'SELECT 1' > /dev/null 2>&1"]
+      # Перевіряємо реальне підключення з обліковими даними додатку.
+      # DB_USER/DB_PASSWORD/DB_NAME читаються Docker Compose з .env-файлу.
+      test: ["CMD-SHELL", "mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} -e 'SELECT 1' > /dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 20
