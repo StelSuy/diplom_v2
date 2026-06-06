@@ -313,8 +313,5 @@ docker/
 | Container | Docker + Docker Compose |
 
 
-
-
-
-
+---
 Розроблено як частина дипломного проєкту · 2026
