@@ -311,3 +311,10 @@ docker/
 | Proxy | Nginx 1.27 |
 | Runtime | Python 3.12 |
 | Container | Docker + Docker Compose |
+
+
+
+
+
+
+Розроблено як частина дипломного проєкту · 2026
